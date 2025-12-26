@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌈 单词小勇士 - Word Hero</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="wordbank.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 'cute': ['Nunito', 'cursive'] },
+                    colors: {
+                        'candy-pink': '#FF6B9D', 'candy-blue': '#4ECDC4', 'candy-yellow': '#FFE66D',
+                        'candy-purple': '#A855F7', 'candy-orange': '#FF9F43', 'candy-green': '#26DE81'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes wiggle { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        @keyframes scorePop { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-60px) scale(1.2); opacity: 0; } }
+        @keyframes confettiFall { 0% { transform: translateY(-100vh) rotate(0deg); } 100% { transform: translateY(100vh) rotate(720deg); } }
+        @keyframes gradient-move { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+        @keyframes sparkle-burst { 
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 1; } 
+            100% { transform: translate(calc(-50% + cos(var(--angle)) * var(--distance)), calc(-50% + sin(var(--angle)) * var(--distance))) scale(1); opacity: 0; } 
+        }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.3); } }
+        @keyframes spin { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
+        @keyframes victory-glow { 0%, 100% { text-shadow: 0 0 20px #FFD700, 0 0 40px #FF6B9D, 0 0 60px #4ECDC4, 3px 3px 0 #FF9F43; transform: scale(1); } 50% { text-shadow: 0 0 40px #FFD700, 0 0 80px #FF6B9D, 0 0 120px #4ECDC4, 5px 5px 0 #FF9F43; transform: scale(1.1); } }
+        @keyframes rainbow-text { 0% { color: #FF6B9D; } 20% { color: #FFE66D; } 40% { color: #4ECDC4; } 60% { color: #A855F7; } 80% { color: #FF9F43; } 100% { color: #FF6B9D; } }
+        @keyframes firework { 0% { transform: translate(-50%, -50%) scale(0); opacity: 1; } 50% { opacity: 1; } 100% { transform: translate(-50%, -50%) scale(3); opacity: 0; } }
+        @keyframes trophy-bounce { 0%, 100% { transform: translateY(0) rotate(-5deg); } 25% { transform: translateY(-30px) rotate(5deg); } 50% { transform: translateY(0) rotate(-5deg); } 75% { transform: translateY(-15px) rotate(3deg); } }
+        @keyframes star-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .animate-victory-glow { animation: victory-glow 1s ease-in-out infinite; }
+        .animate-rainbow { animation: rainbow-text 2s linear infinite; }
+        .animate-trophy { animation: trophy-bounce 1.5s ease-in-out infinite; }
+        .fancy-chinese { font-family: 'Nunito', cursive; font-weight: 900; letter-spacing: 8px; }
+        body { font-family: 'Nunito', cursive; overflow: hidden; }
+        .animate-wiggle { animation: wiggle 1s ease-in-out infinite; }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+        .animate-score-pop { animation: scorePop 0.8s ease-out forwards; }
+        .progress-bar { background: linear-gradient(90deg, #FF6B9D, #4ECDC4, #FFE66D, #A855F7); background-size: 300% 100%; animation: gradient-move 2s ease infinite; }
+        .cute-button { background: linear-gradient(135deg, #FF6B9D 0%, #FF9F43 100%); border-radius: 50px; box-shadow: 0 8px 0 #d4547a; transition: all 0.1s; }
+        .cute-button:hover { transform: translateY(-2px); }
+        .cute-button:active { transform: translateY(4px); box-shadow: 0 4px 0 #d4547a; }
+        .word-bubble { background: linear-gradient(135deg, #FFE66D 0%, #FF9F43 100%); border-radius: 30px; }
+        .image-card { transition: all 0.3s ease; }
+        .image-card.selected { transform: scale(1.08); box-shadow: 0 0 30px rgba(78, 205, 196, 0.8); }
+        .skeleton-glow { filter: drop-shadow(0 0 15px #4ECDC4) drop-shadow(0 0 30px #4ECDC4); }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-400 via-pink-300 to-blue-400 min-h-screen">
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// Use word bank from external file - getAllWords() returns flat array for backward compatibility
+
+const ENCOURAGEMENTS = ["太棒了！🌟", "你真厉害！💪", "做得好！🎉", "继续加油！🚀", "你是最棒的！⭐", "好聪明！🧠", "真了不起！👏", "太厉害了！🏆"];
+
+// Global audio unlock state
+let audioUnlocked = false;
+const unlockAudio = () => {
+    if (audioUnlocked) return;
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    gain.gain.value = 0;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.001);
+    audioUnlocked = true;
+    ctx.close();
+};
+
+// Christmas music - Extended melodies using Web Audio API
+const ChristmasMusicPlayer = ({ play }) => {
+    const audioContextRef = useRef(null);
+    const isPlayingRef = useRef(false);
+    
+    useEffect(() => {
+        if (!play) {
+            isPlayingRef.current = false;
+            if (audioContextRef.current) {
+                audioContextRef.current.close();
+                audioContextRef.current = null;
+            }
+            return;
+        }
+        
+        isPlayingRef.current = true;
+        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        const ctx = audioContextRef.current;
+        
+        const playNote = (freq, startTime, duration, type = 'sine', vol = 0.06) => {
+            if (!isPlayingRef.current) return;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = freq;
+            osc.type = type;
+            gain.gain.setValueAtTime(vol, startTime);
+            gain.gain.setValueAtTime(vol, startTime + duration * 0.7);
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+        };
+        
+        // Note frequencies
+        const C4=261.63, D4=293.66, E4=329.63, F4=349.23, G4=392.00, A4=440.00, B4=493.88;
+        const C5=523.25, D5=587.33, E5=659.25, F5=698.46, G5=783.99;
+        
+        // Extended Christmas medley - about 60 seconds total
+        const melodies = [
+            // Jingle Bells (full verse) ~15s
+            [[E4,0.4],[E4,0.4],[E4,0.8],[E4,0.4],[E4,0.4],[E4,0.8],[E4,0.4],[G4,0.4],[C4,0.4],[D4,0.4],[E4,1.2],
+             [F4,0.4],[F4,0.4],[F4,0.4],[F4,0.4],[F4,0.4],[E4,0.4],[E4,0.4],[E4,0.2],[E4,0.2],[E4,0.4],[D4,0.4],[D4,0.4],[E4,0.4],[D4,0.8],[G4,0.8],
+             [E4,0.4],[E4,0.4],[E4,0.8],[E4,0.4],[E4,0.4],[E4,0.8],[E4,0.4],[G4,0.4],[C4,0.4],[D4,0.4],[E4,1.2],
+             [F4,0.4],[F4,0.4],[F4,0.4],[F4,0.4],[F4,0.4],[E4,0.4],[E4,0.4],[E4,0.4],[G4,0.4],[G4,0.4],[F4,0.4],[D4,0.4],[C4,1.6]],
+            // We Wish You a Merry Christmas ~12s
+            [[G4,0.4],[C5,0.4],[C5,0.3],[D5,0.3],[C5,0.3],[B4,0.4],[A4,0.8],[A4,0.4],[D5,0.4],[D5,0.3],[E5,0.3],[D5,0.3],[C5,0.4],[B4,0.8],[G4,0.4],
+             [E5,0.4],[E5,0.3],[F5,0.3],[E5,0.3],[D5,0.4],[C5,0.4],[A4,0.4],[G4,0.3],[G4,0.3],[A4,0.4],[D5,0.4],[B4,0.4],[C5,1.2]],
+            // Silent Night ~15s
+            [[G4,0.6],[A4,0.3],[G4,0.6],[E4,1.2],[G4,0.6],[A4,0.3],[G4,0.6],[E4,1.2],
+             [D5,0.9],[D5,0.6],[B4,1.2],[C5,0.9],[C5,0.6],[G4,1.2],
+             [A4,0.9],[A4,0.6],[C5,0.6],[B4,0.3],[A4,0.6],[G4,0.6],[A4,0.3],[G4,0.6],[E4,1.2],
+             [A4,0.9],[A4,0.6],[C5,0.6],[B4,0.3],[A4,0.6],[G4,0.6],[A4,0.3],[G4,0.6],[E4,1.2],
+             [D5,0.9],[D5,0.6],[F5,0.6],[D5,0.3],[B4,0.6],[C5,1.5],[E5,1.5],[C5,0.6],[G4,0.3],[E4,0.6],[G4,0.6],[F4,0.3],[D4,0.6],[C4,2.0]],
+            // Deck the Halls ~10s
+            [[C5,0.6],[B4,0.3],[A4,0.6],[G4,0.6],[F4,0.6],[E4,0.6],[F4,0.6],[G4,0.6],
+             [C5,0.6],[B4,0.3],[A4,0.6],[G4,0.6],[F4,0.6],[E4,0.6],[F4,0.6],[G4,0.6],
+             [A4,0.6],[B4,0.3],[C5,0.6],[A4,0.6],[B4,0.4],[C5,0.4],[D5,0.4],[B4,0.6],[C5,1.2]]
+        ];
+        
+        const playMelody = (melodyIndex) => {
+            if (!isPlayingRef.current || !audioContextRef.current) return;
+            const melody = melodies[melodyIndex % melodies.length];
+            let time = ctx.currentTime + 0.1;
+            melody.forEach(([freq, dur]) => {
+                playNote(freq, time, dur, 'sine', 0.05);
+                playNote(freq * 2, time, dur, 'triangle', 0.02); // Harmonics
+                time += dur;
+            });
+            // Schedule next melody
+            const totalDuration = melody.reduce((sum, [_, dur]) => sum + dur, 0);
+            setTimeout(() => {
+                if (isPlayingRef.current) playMelody(melodyIndex + 1);
+            }, (totalDuration + 1) * 1000);
+        };
+        
+        playMelody(0);
+        
+        return () => {
+            isPlayingRef.current = false;
+            if (audioContextRef.current) {
+                audioContextRef.current.close();
+                audioContextRef.current = null;
+            }
+        };
+    }, [play]);
+    
+    return null;
+};
+
+// Victory celebration sound - More exciting for kids
+const playVictorySound = () => {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // Fanfare notes - triumphant ascending arpeggio
+    const fanfare = [
+        [523.25, 0, 0.15], [659.25, 0.12, 0.15], [783.99, 0.24, 0.15], [1046.50, 0.36, 0.3],
+        [783.99, 0.6, 0.1], [1046.50, 0.7, 0.1], [1318.51, 0.8, 0.4]
+    ];
+    
+    fanfare.forEach(([freq, delay, dur]) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        osc.type = 'square';
+        gain.gain.setValueAtTime(0.15, ctx.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + dur);
+    });
+    
+    // Sparkle sounds
+    for (let i = 0; i < 8; i++) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 2000 + Math.random() * 2000;
+        osc.type = 'sine';
+        const start = ctx.currentTime + 1 + i * 0.15;
+        gain.gain.setValueAtTime(0.08, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.2);
+        osc.start(start);
+        osc.stop(start + 0.2);
+    }
+    
+    // Cheering crowd simulation
+    const bufferSize = ctx.sampleRate * 2.5;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+        const envelope = Math.sin(Math.PI * i / bufferSize) * 0.8;
+        data[i] = (Math.random() * 2 - 1) * envelope;
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 1500;
+    filter.Q.value = 0.5;
+    const noiseGain = ctx.createGain();
+    noise.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(ctx.destination);
+    noiseGain.gain.setValueAtTime(0.12, ctx.currentTime + 0.3);
+    noise.start(ctx.currentTime + 0.3);
+};
+
+// Text-to-speech helper
+const speakWord = (word) => {
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(word);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.8;
+        utterance.pitch = 1.1;
+        window.speechSynthesis.speak(utterance);
+    }
+};
+
+// Loading Screen with Christmas music
+const LoadingScreen = ({ progress, onComplete }) => {
+    const [playMusic, setPlayMusic] = useState(true);
+    
+    useEffect(() => {
+        if (progress >= 100) {
+            setPlayMusic(false);
+            setTimeout(onComplete, 500);
+        }
+    }, [progress, onComplete]);
+    
+    return (
+        <div className="fixed inset-0 flex flex-col items-center justify-center z-50" style={{
+            backgroundImage: 'url(https://images.unsplash.com/photo-1482517967863-00e15c9b44be?w=1920&q=80)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+        }}>
+            <div className="absolute inset-0 bg-black/40" />
+            <ChristmasMusicPlayer play={playMusic} />
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                {[...Array(20)].map((_, i) => (
+                    <div key={i} className="absolute animate-float text-4xl" style={{ left: `${Math.random()*100}%`, top: `${Math.random()*100}%`, animationDelay: `${Math.random()*3}s`, opacity: 0.8 }}>
+                        {['❄️','🎄','🎅','⭐','🎁','🔔','🦌','🎀'][i%8]}
+                    </div>
+                ))}
+            </div>
+            <div className="text-center z-10">
+                <div className="text-8xl mb-8 animate-bounce">🎄</div>
+                <h1 className="text-5xl font-black text-white mb-4 drop-shadow-lg animate-wiggle" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.8)' }}>🎅 单词小勇士 🎅</h1>
+                <p className="text-2xl text-white mb-8" style={{ textShadow: '1px 1px 4px rgba(0,0,0,0.8)' }}>Christmas Word Hero</p>
+                <div className="w-80 h-6 bg-white/30 rounded-full overflow-hidden backdrop-blur-sm">
+                    <div className="h-full progress-bar rounded-full transition-all" style={{ width: `${progress}%` }} />
+                </div>
+                <p className="text-lg text-white mt-4" style={{ textShadow: '1px 1px 4px rgba(0,0,0,0.8)' }}>{Math.round(progress)}%</p>
+            </div>
+            <div className="absolute bottom-10 flex gap-8">
+                {['🎅','🦌','⛄','🎁'].map((e, i) => <span key={i} className="text-6xl animate-bounce" style={{ animationDelay: `${i*0.2}s` }}>{e}</span>)}
+            </div>
+        </div>
+    );
+};
+
+// Word Selection Screen with Christmas music
+const WordSelectionScreen = ({ onStartGame }) => {
+    const [selectedUnits, setSelectedUnits] = useState([]);
+    const [playMusic, setPlayMusic] = useState(true);
+    
+    const toggleUnit = (semesterName, unitName) => {
+        const unitKey = `${semesterName}-${unitName}`;
+        setSelectedUnits(prev => 
+            prev.includes(unitKey) 
+                ? prev.filter(u => u !== unitKey) 
+                : [...prev, unitKey]
+        );
+    };
+    
+    const getSelectedWordsCount = () => {
+        let count = 0;
+        selectedUnits.forEach(unitKey => {
+            const [semester, unit] = unitKey.split('-');
+            const words = getWordsByUnit(semester, unit);
+            count += words.length;
+        });
+        return count;
+    };
+    
+    const handleStartGame = () => {
+        const allWords = [];
+        selectedUnits.forEach(unitKey => {
+            const [semester, unit] = unitKey.split('-');
+            const words = getWordsByUnit(semester, unit);
+            allWords.push(...words.map(w => w.word));
+        });
+        setPlayMusic(false);
+        onStartGame(allWords);
+    };
+    
+    return (
+        <div className="min-h-screen max-h-screen overflow-y-auto p-8 relative" style={{
+            backgroundImage: 'url(https://images.unsplash.com/photo-1512389142860-9c449e58a543?w=1920&q=80)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundAttachment: 'fixed'
+        }}>
+            <div className="absolute inset-0 bg-black/50 pointer-events-none" />
+            <ChristmasMusicPlayer play={playMusic} />
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                {[...Array(15)].map((_, i) => (
+                    <div key={i} className="absolute animate-float text-3xl" style={{ left: `${Math.random()*100}%`, top: `${Math.random()*100}%`, animationDelay: `${Math.random()*3}s`, opacity: 0.7 }}>
+                        {['❄️','🎄','⭐','🎁','🔔'][i%5]}
+                    </div>
+                ))}
+            </div>
+            <div className="max-w-7xl mx-auto relative z-10 pb-20">
+                <div className="text-center mb-8">
+                    <h1 className="text-5xl font-black text-white drop-shadow-lg mb-4 animate-wiggle" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.8)' }}>🎄 选择学习单元 🎄</h1>
+                    <p className="text-xl text-white" style={{ textShadow: '1px 1px 4px rgba(0,0,0,0.8)' }}>已选择 <span className="font-bold text-candy-yellow">{getSelectedWordsCount()}</span> 个单词</p>
+                    <p className="text-sm text-white/90 mt-2" style={{ textShadow: '1px 1px 4px rgba(0,0,0,0.8)' }}>� 点击单元卡片选择要学习的内容</p>
+                </div>
+                
+                {/* 三年级上册 */}
+                <div className="mb-12">
+                    <h2 className="text-3xl font-black text-white text-center mb-6" style={{ textShadow: '2px 2px 6px rgba(0,0,0,0.8)' }}>📖 三年级上册</h2>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                        {['Unit 1', 'Unit 2', 'Unit 3', 'Unit 4', 'Unit 5', 'Unit 6'].map((unit) => {
+                            const unitKey = `三年级上册-${unit}`;
+                            const isSelected = selectedUnits.includes(unitKey);
+                            const wordCount = getWordsByUnit('三年级上册', unit).length;
+                            return (
+                                <div 
+                                    key={unitKey} 
+                                    onClick={() => toggleUnit('三年级上册', unit)}
+                                    className={`relative p-6 rounded-3xl cursor-pointer transition-all duration-300 ${
+                                        isSelected 
+                                            ? 'bg-gradient-to-br from-candy-pink to-candy-orange scale-105 shadow-2xl' 
+                                            : 'bg-white/90 hover:bg-white hover:scale-105 shadow-lg'
+                                    }`}
+                                >
+                                    {isSelected && <div className="absolute -top-2 -right-2 w-10 h-10 bg-candy-yellow rounded-full flex items-center justify-center shadow-lg text-xl">✓</div>}
+                                    <div className="text-center">
+                                        <div className="text-4xl mb-3">📚</div>
+                                        <div className={`font-black text-xl mb-2 ${
+                                            isSelected ? 'text-white' : 'text-gray-800'
+                                        }`}>{unit}</div>
+                                        <div className={`text-sm font-bold ${
+                                            isSelected ? 'text-white/90' : 'text-gray-600'
+                                        }`}>{wordCount} 个单词</div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+                
+                {/* 三年级下册 */}
+                <div className="mb-12">
+                    <h2 className="text-3xl font-black text-white text-center mb-6" style={{ textShadow: '2px 2px 6px rgba(0,0,0,0.8)' }}>📗 三年级下册</h2>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                        {['Unit 1', 'Unit 2', 'Unit 3', 'Unit 4', 'Unit 5', 'Unit 6'].map((unit) => {
+                            const unitKey = `三年级下册-${unit}`;
+                            const isSelected = selectedUnits.includes(unitKey);
+                            const wordCount = getWordsByUnit('三年级下册', unit).length;
+                            return (
+                                <div 
+                                    key={unitKey} 
+                                    onClick={() => toggleUnit('三年级下册', unit)}
+                                    className={`relative p-6 rounded-3xl cursor-pointer transition-all duration-300 ${
+                                        isSelected 
+                                            ? 'bg-gradient-to-br from-candy-blue to-candy-purple scale-105 shadow-2xl' 
+                                            : 'bg-white/90 hover:bg-white hover:scale-105 shadow-lg'
+                                    }`}
+                                >
+                                    {isSelected && <div className="absolute -top-2 -right-2 w-10 h-10 bg-candy-yellow rounded-full flex items-center justify-center shadow-lg text-xl">✓</div>}
+                                    <div className="text-center">
+                                        <div className="text-4xl mb-3">📗</div>
+                                        <div className={`font-black text-xl mb-2 ${
+                                            isSelected ? 'text-white' : 'text-gray-800'
+                                        }`}>{unit}</div>
+                                        <div className={`text-sm font-bold ${
+                                            isSelected ? 'text-white/90' : 'text-gray-600'
+                                        }`}>{wordCount} 个单词</div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+                
+                {/* KET Topics */}
+                <div className="mb-12">
+                    <h2 className="text-3xl font-black text-white text-center mb-6" style={{ textShadow: '2px 2px 6px rgba(0,0,0,0.8)' }}>🌟 KET 主题词汇</h2>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                        {[
+                            { name: 'Appliances', emoji: '📱', label: '电器' },
+                            { name: 'Clothes', emoji: '👕', label: '服装' },
+                            { name: 'Food', emoji: '🍕', label: '食物' },
+                            { name: 'Animals', emoji: '🐶', label: '动物' },
+                            { name: 'Sports', emoji: '⚽', label: '运动' },
+                            { name: 'Weather', emoji: '☀️', label: '天气' },
+                            { name: 'Transport', emoji: '🚗', label: '交通' },
+                            { name: 'Colours', emoji: '🎨', label: '颜色' },
+                            { name: 'Communication', emoji: '💬', label: '通讯' },
+                            { name: 'Documents', emoji: '📄', label: '文件' },
+                            { name: 'Education', emoji: '📚', label: '教育' },
+                            { name: 'Entertainment', emoji: '🎬', label: '娱乐' },
+                            { name: 'Family', emoji: '👨‍👩‍👧‍👦', label: '家庭' },
+                            { name: 'Health', emoji: '❤️', label: '健康' },
+                            { name: 'Hobbies', emoji: '🎨', label: '爱好' },
+                            { name: 'House', emoji: '🏠', label: '房屋' },
+                            { name: 'Measurements', emoji: '📏', label: '度量' },
+                            { name: 'Feelings', emoji: '😊', label: '情感' },
+                            { name: 'Buildings', emoji: '🏢', label: '建筑' },
+                            { name: 'Countryside', emoji: '🌾', label: '乡村' },
+                            { name: 'City', emoji: '🏙️', label: '城市' },
+                            { name: 'Services', emoji: 'ℹ️', label: '服务' },
+                            { name: 'Shopping', emoji: '🛍️', label: '购物' },
+                            { name: 'Nature', emoji: '🌳', label: '自然' },
+                            { name: 'Time', emoji: '⏰', label: '时间' },
+                            { name: 'Travel', emoji: '✈️', label: '旅行' },
+                            { name: 'Work', emoji: '💼', label: '工作' },
+                            { name: 'Food Extended', emoji: '🍽️', label: '食物扩展' },
+                            { name: 'Sport Extended', emoji: '🏆', label: '运动扩展' }
+                        ].map((topic) => {
+                            const unitKey = `KET-${topic.name}`;
+                            const isSelected = selectedUnits.includes(unitKey);
+                            const wordCount = getWordsByUnit('KET', topic.name).length;
+                            return (
+                                <div 
+                                    key={unitKey} 
+                                    onClick={() => toggleUnit('KET', topic.name)}
+                                    className={`relative p-6 rounded-3xl cursor-pointer transition-all duration-300 ${
+                                        isSelected 
+                                            ? 'bg-gradient-to-br from-candy-green to-candy-yellow scale-105 shadow-2xl' 
+                                            : 'bg-white/90 hover:bg-white hover:scale-105 shadow-lg'
+                                    }`}
+                                >
+                                    {isSelected && <div className="absolute -top-2 -right-2 w-10 h-10 bg-candy-yellow rounded-full flex items-center justify-center shadow-lg text-xl">✓</div>}
+                                    <div className="text-center">
+                                        <div className="text-4xl mb-3">{topic.emoji}</div>
+                                        <div className={`font-black text-lg mb-1 ${
+                                            isSelected ? 'text-white' : 'text-gray-800'
+                                        }`}>{topic.label}</div>
+                                        <div className={`text-xs font-semibold mb-2 ${
+                                            isSelected ? 'text-white/80' : 'text-gray-500'
+                                        }`}>{topic.name}</div>
+                                        <div className={`text-sm font-bold ${
+                                            isSelected ? 'text-white/90' : 'text-gray-600'
+                                        }`}>{wordCount} 个单词</div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+                
+                <div className="text-center mt-8">
+                    <button 
+                        onClick={() => getSelectedWordsCount() > 0 && handleStartGame()} 
+                        disabled={getSelectedWordsCount() === 0} 
+                        className={`cute-button px-16 py-5 text-white font-black text-2xl ${
+                            getSelectedWordsCount() === 0 ? 'opacity-50 cursor-not-allowed' : 'animate-pulse'
+                        }`}
+                    >
+                        🎅 开始游戏！
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// Super Fancy Confetti for Kids!
+const Confetti = ({ active }) => {
+    if (!active) return null;
+    const colors = ['#FF6B9D', '#4ECDC4', '#FFE66D', '#A855F7', '#FF9F43', '#26DE81', '#FF4757', '#2ED573', '#1E90FF', '#FF69B4'];
+    const emojis = ['⭐', '🌟', '✨', '💫', '🎉', '🎊', '🎈', '🎁', '❤️', '💖', '🌈', '🦋', '🎀', '🍭', '🍬'];
+    const shapes = ['circle', 'star', 'heart', 'square', 'triangle'];
+    
+    const getShape = (shape, color, size) => {
+        switch(shape) {
+            case 'star':
+                return { clipPath: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)', backgroundColor: color, width: size, height: size };
+            case 'heart':
+                return { clipPath: 'polygon(50% 100%, 0% 35%, 25% 0%, 50% 20%, 75% 0%, 100% 35%)', backgroundColor: color, width: size, height: size };
+            case 'triangle':
+                return { clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)', backgroundColor: color, width: size, height: size };
+            case 'circle':
+                return { borderRadius: '50%', backgroundColor: color, width: size, height: size };
+            default:
+                return { backgroundColor: color, width: size, height: size, borderRadius: '3px' };
+        }
+    };
+    
+    return (
+        <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
+            {/* Colorful confetti pieces */}
+            {[...Array(80)].map((_, i) => {
+                const size = 10 + Math.random() * 20;
+                const shape = shapes[i % shapes.length];
+                const color = colors[i % colors.length];
+                return (
+                    <div key={`confetti-${i}`} className="absolute" style={{ 
+                        left: `${Math.random()*100}%`, 
+                        top: '-30px',
+                        ...getShape(shape, color, `${size}px`),
+                        animation: `confettiFall ${2 + Math.random() * 2}s linear forwards`,
+                        animationDelay: `${Math.random() * 0.8}s`,
+                        transform: `rotate(${Math.random() * 360}deg)`,
+                        boxShadow: `0 0 ${size/2}px ${color}80`
+                    }} />
+                );
+            })}
+            {/* Floating emojis */}
+            {[...Array(25)].map((_, i) => (
+                <div key={`emoji-${i}`} className="absolute text-4xl" style={{ 
+                    left: `${Math.random()*100}%`, 
+                    top: '-50px',
+                    animation: `confettiFall ${3 + Math.random() * 2}s linear forwards`,
+                    animationDelay: `${Math.random() * 1}s`,
+                    fontSize: `${30 + Math.random() * 30}px`
+                }}>
+                    {emojis[i % emojis.length]}
+                </div>
+            ))}
+            {/* Sparkle bursts from center */}
+            {[...Array(20)].map((_, i) => {
+                const angle = (i / 20) * 360;
+                const distance = 200 + Math.random() * 300;
+                return (
+                    <div key={`sparkle-${i}`} className="absolute" style={{
+                        left: '50%',
+                        top: '50%',
+                        width: '20px',
+                        height: '20px',
+                        backgroundColor: colors[i % colors.length],
+                        borderRadius: '50%',
+                        boxShadow: `0 0 20px ${colors[i % colors.length]}`,
+                        animation: `sparkle-burst 1.5s ease-out forwards`,
+                        animationDelay: `${i * 0.05}s`,
+                        '--angle': `${angle}deg`,
+                        '--distance': `${distance}px`
+                    }} />
+                );
+            })}
+            {/* Big celebration text */}
+            <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center animate-bounce">
+                <div className="text-8xl mb-4" style={{ animation: 'pulse 0.5s ease-in-out infinite' }}>🎉</div>
+                <div className="fancy-chinese animate-victory-glow" style={{ fontSize: '5rem', color: '#FFD700', textShadow: '0 0 20px #FFD700, 0 0 40px #FF6B9D, 0 0 60px #4ECDC4, 4px 4px 0 #FF9F43, -2px -2px 0 #fff' }}>
+                    太棒了!
+                </div>
+            </div>
+            {/* Rainbow ring effect */}
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full" style={{
+                background: 'conic-gradient(#FF6B9D, #FFE66D, #4ECDC4, #A855F7, #FF9F43, #FF6B9D)',
+                animation: 'spin 2s linear infinite',
+                opacity: 0.3,
+                filter: 'blur(20px)'
+            }} />
+        </div>
+    );
+};
+
+// Floating Score
+const FloatingScore = ({ score, x, y }) => (
+    <div className="fixed text-4xl font-black text-candy-yellow animate-score-pop z-50" style={{ left: x, top: y, textShadow: '0 0 20px rgba(255, 230, 109, 0.8), 2px 2px 0 #FF9F43' }}>+{score}</div>
+);
+
+// Ultimate Victory Confetti - More spectacular for game completion!
+const VictoryConfetti = ({ active }) => {
+    if (!active) return null;
+    const colors = ['#FFD700', '#FF6B9D', '#4ECDC4', '#A855F7', '#FF9F43', '#26DE81', '#FF4757', '#2ED573', '#1E90FF', '#FF69B4'];
+    const emojis = ['🏆', '⭐', '🌟', '✨', '💫', '🎉', '🎊', '👑', '🥇', '💎', '🌈', '🦋', '🎀', '🍭', '🎁', '❤️', '💖', '🔥', '💯'];
+    
+    // Play ultimate victory sound
+    useEffect(() => {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        // Epic fanfare
+        const notes = [
+            [523.25, 0, 0.2], [659.25, 0.15, 0.2], [783.99, 0.3, 0.2], [1046.50, 0.45, 0.4],
+            [783.99, 0.8, 0.15], [1046.50, 0.95, 0.15], [1318.51, 1.1, 0.5],
+            [1046.50, 1.5, 0.15], [1318.51, 1.65, 0.15], [1567.98, 1.8, 0.6]
+        ];
+        notes.forEach(([freq, delay, dur]) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = freq;
+            osc.type = 'square';
+            gain.gain.setValueAtTime(0.12, ctx.currentTime + delay);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
+            osc.start(ctx.currentTime + delay);
+            osc.stop(ctx.currentTime + delay + dur);
+        });
+        // Sparkle cascade
+        for (let i = 0; i < 15; i++) {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = 2500 + Math.random() * 2000;
+            osc.type = 'sine';
+            const start = ctx.currentTime + 2 + i * 0.1;
+            gain.gain.setValueAtTime(0.06, start);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.15);
+            osc.start(start);
+            osc.stop(start + 0.15);
+        }
+    }, []);
+    
+    return (
+        <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
+            {/* Multiple firework bursts */}
+            {[...Array(8)].map((_, burstIdx) => {
+                const burstX = 15 + (burstIdx % 4) * 25;
+                const burstY = 20 + Math.floor(burstIdx / 4) * 40;
+                return [...Array(12)].map((_, i) => {
+                    const angle = (i / 12) * 360;
+                    return (
+                        <div key={`firework-${burstIdx}-${i}`} className="absolute" style={{
+                            left: `${burstX}%`,
+                            top: `${burstY}%`,
+                            width: '15px',
+                            height: '15px',
+                            backgroundColor: colors[(burstIdx + i) % colors.length],
+                            borderRadius: '50%',
+                            boxShadow: `0 0 20px ${colors[(burstIdx + i) % colors.length]}`,
+                            animation: `firework 1.5s ease-out forwards`,
+                            animationDelay: `${burstIdx * 0.3}s`,
+                            transform: `rotate(${angle}deg) translateY(-100px)`
+                        }} />
+                    );
+                });
+            })}
+            {/* Extra confetti - double the amount */}
+            {[...Array(120)].map((_, i) => {
+                const size = 12 + Math.random() * 25;
+                const color = colors[i % colors.length];
+                return (
+                    <div key={`confetti-${i}`} className="absolute" style={{ 
+                        left: `${Math.random()*100}%`, 
+                        top: '-40px',
+                        width: `${size}px`,
+                        height: `${size}px`,
+                        backgroundColor: color,
+                        borderRadius: i % 3 === 0 ? '50%' : i % 3 === 1 ? '0' : '50% 0 50% 0',
+                        animation: `confettiFall ${2 + Math.random() * 3}s linear forwards`,
+                        animationDelay: `${Math.random() * 2}s`,
+                        boxShadow: `0 0 ${size}px ${color}80`
+                    }} />
+                );
+            })}
+            {/* Giant floating emojis */}
+            {[...Array(40)].map((_, i) => (
+                <div key={`emoji-${i}`} className="absolute" style={{ 
+                    left: `${Math.random()*100}%`, 
+                    top: '-80px',
+                    animation: `confettiFall ${3 + Math.random() * 3}s linear forwards`,
+                    animationDelay: `${Math.random() * 2.5}s`,
+                    fontSize: `${40 + Math.random() * 50}px`
+                }}>
+                    {emojis[i % emojis.length]}
+                </div>
+            ))}
+            {/* Rotating star rings */}
+            {[...Array(3)].map((_, i) => (
+                <div key={`ring-${i}`} className="absolute top-1/2 left-1/2" style={{
+                    width: `${200 + i * 150}px`,
+                    height: `${200 + i * 150}px`,
+                    border: `4px dashed ${colors[i * 3]}`,
+                    borderRadius: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    animation: `star-spin ${3 + i}s linear infinite`,
+                    animationDirection: i % 2 === 0 ? 'normal' : 'reverse',
+                    opacity: 0.6
+                }} />
+            ))}
+            {/* Giant center celebration */}
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+                <div className="animate-trophy" style={{ fontSize: '12rem' }}>🏆</div>
+            </div>
+            {/* Pulsing glow background */}
+            <div className="absolute inset-0" style={{
+                background: 'radial-gradient(circle at center, rgba(255, 215, 0, 0.3) 0%, transparent 70%)',
+                animation: 'pulse 1s ease-in-out infinite'
+            }} />
+        </div>
+    );
+};
+
+// Main Game Screen
+const GameScreen = ({ selectedWords, onBackToMenu }) => {
+    const videoRef = useRef(null);
+    const canvasRef = useRef(null);
+    const audioRef = useRef(null);
+    const audioContextRef = useRef(null);
+    const analyserRef = useRef(null);
+    const bgMusicRef = useRef(null);
+    const christmasBgRef = useRef(null);
+    const cameraRef = useRef(null);
+    const poseRef = useRef(null);
+    const shouldProcessRef = useRef(true);
+    
+    const [score, setScore] = useState(0);
+    const [combo, setCombo] = useState(0);
+    const [correctCount, setCorrectCount] = useState(0);
+    const [currentWordIndex, setCurrentWordIndex] = useState(0);
+    const [userPosition, setUserPosition] = useState('center');
+    const [showConfetti, setShowConfetti] = useState(false);
+    const [floatingScores, setFloatingScores] = useState([]);
+    const [aiMessage, setAiMessage] = useState('');
+    const [apiKey, setApiKey] = useState('');
+    const [showSettings, setShowSettings] = useState(false);
+    const [audioData, setAudioData] = useState([]);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [gameWords, setGameWords] = useState([]);
+    const [isGameComplete, setIsGameComplete] = useState(false);
+    const [highlightedPosition, setHighlightedPosition] = useState('');
+    const [holdProgress, setHoldProgress] = useState(0);
+    
+    const lastPositionRef = useRef('');
+    const selectionTimeoutRef = useRef(null);
+    const holdStartRef = useRef(null);
+    const processingRef = useRef(false);
+    const gameWordsRef = useRef([]);
+    const currentWordIndexRef = useRef(0);
+    const isGameCompleteRef = useRef(false);
+    const currentImagesRef = useRef([]);
+    
+    const [playMusic, setPlayMusic] = useState(true);
+    const snowflakesRef = useRef([]);
+    
+    // Initialize snowflakes
+    useEffect(() => {
+        snowflakesRef.current = Array.from({ length: 150 }, () => ({
+            x: Math.random() * 1280,
+            y: Math.random() * 720,
+            size: Math.random() * 4 + 2,
+            speed: Math.random() * 2 + 1,
+            drift: Math.random() * 2 - 1
+        }));
+    }, []);
+    
+    // State to hold current shuffled images for the current word
+    const [currentImages, setCurrentImages] = useState([]);
+    
+    // Shuffle images when word changes - ensures correct answer position is randomized each time
+    useEffect(() => {
+        if (gameWords.length > 0 && gameWords[currentWordIndex]) {
+            const word = gameWords[currentWordIndex];
+            const shuffled = [...word.images].sort(() => Math.random() - 0.5);
+            setCurrentImages(shuffled);
+            currentImagesRef.current = shuffled;
+            speakWord(word.word);
+        }
+    }, [currentWordIndex, gameWords]);
+
+    useEffect(() => {
+        const words = selectedWords.map(wordName => {
+            const wordData = getAllWords().find(w => w.word === wordName);
+            return { ...wordData };
+        });
+        const shuffledWords = words.sort(() => Math.random() - 0.5);
+        setGameWords(shuffledWords);
+        gameWordsRef.current = shuffledWords;
+    }, [selectedWords]);
+
+    // Keep refs in sync with state
+    useEffect(() => {
+        currentWordIndexRef.current = currentWordIndex;
+    }, [currentWordIndex]);
+
+    useEffect(() => {
+        isGameCompleteRef.current = isGameComplete;
+    }, [isGameComplete]);
+
+    useEffect(() => {
+        if (!videoRef.current || !canvasRef.current || gameWords.length === 0) return;
+        
+        shouldProcessRef.current = true;
+        
+        const pose = new Pose({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}` });
+        pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+        poseRef.current = pose;
+        
+        pose.onResults((results) => {
+            if (!shouldProcessRef.current) return;
+            drawSkeleton(results);
+            detectPosition(results);
+        });
+        
+        const camera = new Camera(videoRef.current, {
+            onFrame: async () => { 
+                if (!shouldProcessRef.current) return;
+                await pose.send({ image: videoRef.current }); 
+            },
+            width: 1280, height: 720
+        });
+        cameraRef.current = camera;
+        camera.start();
+        
+        return () => { 
+            shouldProcessRef.current = false;
+            camera.stop();
+            cameraRef.current = null;
+            poseRef.current = null;
+        };
+    }, [gameWords]);
+
+    const drawSkeleton = (results) => {
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        canvas.width = videoRef.current.videoWidth || 1280;
+        canvas.height = videoRef.current.videoHeight || 720;
+        
+        // Draw dynamic Christmas background with snow and trees
+        // Night sky gradient
+        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        gradient.addColorStop(0, '#0d1b2a');
+        gradient.addColorStop(0.4, '#1b263b');
+        gradient.addColorStop(0.7, '#415a77');
+        gradient.addColorStop(1, '#778da9');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw stars
+        ctx.fillStyle = '#FFD700';
+        for (let i = 0; i < 50; i++) {
+            const x = (i * 137) % canvas.width;
+            const y = (i * 73) % (canvas.height * 0.4);
+            const twinkle = Math.sin(Date.now() / 500 + i) * 0.5 + 0.5;
+            ctx.globalAlpha = twinkle;
+            ctx.beginPath();
+            ctx.arc(x, y, 1 + Math.random(), 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        
+        // Draw snow-covered ground
+        ctx.fillStyle = '#e8f4f8';
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height - 80);
+        for (let x = 0; x <= canvas.width; x += 50) {
+            ctx.lineTo(x, canvas.height - 80 + Math.sin(x / 100) * 20);
+        }
+        ctx.lineTo(canvas.width, canvas.height);
+        ctx.lineTo(0, canvas.height);
+        ctx.fill();
+        
+        // Draw Christmas trees with decorations
+        const treePositions = [100, 350, 650, 950, 1180];
+        treePositions.forEach((treeX, idx) => {
+            const treeY = canvas.height - 70;
+            const treeHeight = 180 + (idx % 2) * 40;
+            
+            // Tree trunk
+            ctx.fillStyle = '#5D4037';
+            ctx.fillRect(treeX - 12, treeY - 20, 24, 40);
+            
+            // Tree layers
+            for (let layer = 0; layer < 3; layer++) {
+                const layerY = treeY - 20 - layer * 50;
+                const layerWidth = 70 - layer * 15;
+                ctx.fillStyle = layer % 2 === 0 ? '#1B5E20' : '#2E7D32';
+                ctx.beginPath();
+                ctx.moveTo(treeX, layerY - 60);
+                ctx.lineTo(treeX - layerWidth, layerY);
+                ctx.lineTo(treeX + layerWidth, layerY);
+                ctx.closePath();
+                ctx.fill();
+            }
+            
+            // Tree star
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.arc(treeX, treeY - treeHeight + 10, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Tree ornaments
+            const ornamentColors = ['#E53935', '#FFD700', '#2196F3', '#E91E63'];
+            for (let i = 0; i < 6; i++) {
+                ctx.fillStyle = ornamentColors[i % ornamentColors.length];
+                const ox = treeX + Math.cos(i * 1.2) * (25 + i * 5);
+                const oy = treeY - 50 - i * 20;
+                ctx.beginPath();
+                ctx.arc(ox, oy, 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        });
+        
+        // Update and draw animated snowflakes
+        ctx.fillStyle = '#FFFFFF';
+        snowflakesRef.current.forEach(flake => {
+            flake.y += flake.speed;
+            flake.x += flake.drift + Math.sin(Date.now() / 1000 + flake.x) * 0.5;
+            
+            if (flake.y > canvas.height) {
+                flake.y = -10;
+                flake.x = Math.random() * canvas.width;
+            }
+            if (flake.x > canvas.width) flake.x = 0;
+            if (flake.x < 0) flake.x = canvas.width;
+            
+            ctx.beginPath();
+            ctx.arc(flake.x, flake.y, flake.size, 0, Math.PI * 2);
+            ctx.fill();
+        });
+        
+        if (results.poseLandmarks) {
+            const landmarks = results.poseLandmarks.map(lm => ({ ...lm, x: 1 - lm.x }));
+            
+            // Get body center position for Christmas character
+            const nose = landmarks[0];
+            const leftShoulder = landmarks[11];
+            const rightShoulder = landmarks[12];
+            const leftHip = landmarks[23];
+            const rightHip = landmarks[24];
+            
+            const centerX = (leftShoulder.x + rightShoulder.x) / 2 * canvas.width;
+            const centerY = (leftShoulder.y + rightShoulder.y) / 2 * canvas.height;
+            const headY = nose.y * canvas.height;
+            const hipY = (leftHip.y + rightHip.y) / 2 * canvas.height;
+            const bodyHeight = hipY - headY;
+            const scale = Math.max(bodyHeight / 200, 0.5);
+            
+            ctx.save();
+            ctx.translate(centerX, headY - 20 * scale);
+            ctx.scale(scale, scale);
+            
+            // Draw cute Christmas character
+            // Santa hat
+            ctx.fillStyle = '#E53935';
+            ctx.beginPath();
+            ctx.moveTo(-40, 0);
+            ctx.quadraticCurveTo(0, -80, 40, 0);
+            ctx.fill();
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath();
+            ctx.arc(0, -70, 15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(-50, -5, 100, 20);
+            
+            // Face
+            ctx.fillStyle = '#FFCC80';
+            ctx.beginPath();
+            ctx.arc(0, 40, 45, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Rosy cheeks
+            ctx.fillStyle = '#FFAB91';
+            ctx.beginPath();
+            ctx.arc(-25, 50, 12, 0, Math.PI * 2);
+            ctx.arc(25, 50, 12, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Eyes
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.arc(-15, 35, 8, 0, Math.PI * 2);
+            ctx.arc(15, 35, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#FFF';
+            ctx.beginPath();
+            ctx.arc(-13, 33, 3, 0, Math.PI * 2);
+            ctx.arc(17, 33, 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Smile
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(0, 45, 20, 0.2, Math.PI - 0.2);
+            ctx.stroke();
+            
+            // Body (red coat)
+            ctx.fillStyle = '#E53935';
+            ctx.beginPath();
+            ctx.ellipse(0, 140, 55, 70, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // White trim
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(-55, 90, 110, 15);
+            ctx.beginPath();
+            ctx.arc(0, 200, 55, 0, Math.PI);
+            ctx.fill();
+            
+            // Belt
+            ctx.fillStyle = '#333';
+            ctx.fillRect(-50, 130, 100, 15);
+            ctx.fillStyle = '#FFD700';
+            ctx.fillRect(-12, 127, 24, 21);
+            
+            // Arms
+            ctx.fillStyle = '#E53935';
+            ctx.beginPath();
+            ctx.ellipse(-65, 120, 20, 35, -0.3, 0, Math.PI * 2);
+            ctx.ellipse(65, 120, 20, 35, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Hands (mittens)
+            ctx.fillStyle = '#4CAF50';
+            ctx.beginPath();
+            ctx.arc(-70, 155, 18, 0, Math.PI * 2);
+            ctx.arc(70, 155, 18, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+    };
+
+    const detectPosition = (results) => {
+        if (!results.poseLandmarks) return;
+        
+        const leftHip = results.poseLandmarks[23];
+        const rightHip = results.poseLandmarks[24];
+        const centerX = 1 - ((leftHip.x + rightHip.x) / 2);
+        
+        let position;
+        if (centerX < 0.35) position = 'left';
+        else if (centerX > 0.65) position = 'right';
+        else position = 'center';
+        
+        // Always update visual position
+        setUserPosition(position);
+        setHighlightedPosition(position);
+        
+        // Don't process selection if already processing or game complete (use refs for latest values)
+        if (processingRef.current || isGameCompleteRef.current || gameWordsRef.current.length === 0) {
+            setHoldProgress(0);
+            return;
+        }
+        
+        if (position === lastPositionRef.current && lastPositionRef.current !== '') {
+            if (!holdStartRef.current) holdStartRef.current = Date.now();
+            const elapsed = Date.now() - holdStartRef.current;
+            setHoldProgress(Math.min(elapsed / 3000 * 100, 100));
+            
+            if (elapsed >= 3000 && !selectionTimeoutRef.current) {
+                selectionTimeoutRef.current = true;
+                handleSelection(position);
+            }
+        } else {
+            lastPositionRef.current = position;
+            holdStartRef.current = Date.now();
+            selectionTimeoutRef.current = null;
+            setHoldProgress(0);
+        }
+    };
+
+    const handleSelection = (position) => {
+        // Use refs for latest values to avoid stale closure
+        if (isGameCompleteRef.current || gameWordsRef.current.length === 0 || processingRef.current) return;
+        processingRef.current = true;
+        
+        const images = currentImagesRef.current;
+        if (!images || images.length === 0) {
+            processingRef.current = false;
+            return;
+        }
+        
+        const positionIndex = position === 'left' ? 0 : position === 'center' ? 1 : 2;
+        const selectedImage = images[positionIndex];
+        
+        if (selectedImage.correct) {
+            const comboMultiplier = Math.min(combo + 1, 5);
+            const earnedScore = 100 * comboMultiplier;
+            
+            setScore(prev => prev + earnedScore);
+            setCombo(prev => prev + 1);
+            setCorrectCount(prev => prev + 1);
+            
+            const newScore = { id: Date.now(), score: earnedScore, x: '50%', y: '50%' };
+            setFloatingScores(prev => [...prev, newScore]);
+            setTimeout(() => setFloatingScores(prev => prev.filter(s => s.id !== newScore.id)), 1000);
+            
+            setShowConfetti(true);
+            // Play victory sound using Web Audio API
+            playVictorySound();
+            setTimeout(() => {
+                setShowConfetti(false);
+            }, 3000);
+            
+            generateAIMessage(earnedScore, combo + 1);
+            
+            // Use ref for latest value to avoid stale closure
+            const currentIdx = currentWordIndexRef.current;
+            const totalWords = gameWordsRef.current.length;
+            
+            if (currentIdx + 1 >= totalWords) {
+                // This is the last word - show victory!
+                console.log('Game Complete! currentIdx:', currentIdx, 'totalWords:', totalWords);
+                // Stop camera/pose detection immediately
+                shouldProcessRef.current = false;
+                if (cameraRef.current) {
+                    cameraRef.current.stop();
+                    cameraRef.current = null;
+                }
+                if (poseRef.current) {
+                    poseRef.current.close();
+                    poseRef.current = null;
+                }
+                setTimeout(() => {
+                    setIsGameComplete(true);
+                }, 3000);
+            } else {
+                setTimeout(() => {
+                    setCurrentWordIndex(prev => prev + 1);
+                    processingRef.current = false;
+                    selectionTimeoutRef.current = null;
+                    holdStartRef.current = null;
+                    setHoldProgress(0);
+                }, 3000);
+            }
+        } else {
+            setCombo(0);
+            setAiMessage('再试一次哦！💪');
+            // Clear message after 2 seconds
+            setTimeout(() => setAiMessage(''), 2000);
+            // Reset all refs to allow retry - key fix: also reset lastPositionRef
+            setTimeout(() => {
+                processingRef.current = false;
+                selectionTimeoutRef.current = null;
+                holdStartRef.current = null;
+                lastPositionRef.current = ''; // Reset this so any position is treated as new
+                setHoldProgress(0);
+            }, 800);
+        }
+    };
+
+    const generateAIMessage = async (earnedScore, currentCombo) => {
+        if (apiKey) {
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: `你是儿童教育游戏AI。小朋友得了${earnedScore}分，连击${currentCombo}。用简短可爱中文回复(不超过15字)。` }] }] })
+                });
+                const data = await response.json();
+                if (data.candidates?.[0]) setAiMessage(data.candidates[0].content.parts[0].text);
+            } catch { setAiMessage(ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)]); }
+        } else {
+            setAiMessage(ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)]);
+        }
+    };
+
+    const handleMusicUpload = (e) => {
+        const file = e.target.files[0];
+        if (file && audioRef.current) {
+            audioRef.current.src = URL.createObjectURL(file);
+            if (!audioContextRef.current) {
+                audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+                analyserRef.current = audioContextRef.current.createAnalyser();
+                const source = audioContextRef.current.createMediaElementSource(audioRef.current);
+                source.connect(analyserRef.current);
+                analyserRef.current.connect(audioContextRef.current.destination);
+                analyserRef.current.fftSize = 64;
+            }
+            audioRef.current.play();
+            setIsPlaying(true);
+        }
+    };
+
+    useEffect(() => {
+        if (!isPlaying || !analyserRef.current) return;
+        const update = () => {
+            const arr = new Uint8Array(analyserRef.current.frequencyBinCount);
+            analyserRef.current.getByteFrequencyData(arr);
+            setAudioData(Array.from(arr));
+            requestAnimationFrame(update);
+        };
+        update();
+    }, [isPlaying]);
+
+    const currentWord = gameWords[currentWordIndex];
+
+    if (isGameComplete) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-purple-500 via-pink-400 to-blue-500 flex items-center justify-center">
+                <VictoryConfetti active={true} />
+                <div className="text-center bg-white/90 backdrop-blur-lg rounded-3xl p-12 shadow-2xl z-10 relative">
+                    <div className="text-9xl mb-6 animate-trophy">👑</div>
+                    <h1 className="fancy-chinese animate-victory-glow mb-4" style={{ fontSize: '4rem', color: '#FFD700', textShadow: '0 0 30px #FFD700, 0 0 60px #FF6B9D, 0 0 90px #4ECDC4, 4px 4px 0 #FF9F43' }}>
+                        🎉 恭喜通关 🎉
+                    </h1>
+                    <p className="text-2xl text-gray-600 mb-8 font-bold">你完成了所有单词！太厉害了！</p>
+                    <div className="grid grid-cols-2 gap-8 mb-8">
+                        <div className="bg-gradient-to-br from-candy-pink to-candy-orange p-6 rounded-2xl transform hover:scale-105 transition-all">
+                            <div className="text-5xl font-black text-white animate-pulse">{score}</div>
+                            <div className="text-white/90 text-lg font-bold">⭐ 总分数 ⭐</div>
+                        </div>
+                        <div className="bg-gradient-to-br from-candy-blue to-candy-green p-6 rounded-2xl transform hover:scale-105 transition-all">
+                            <div className="text-5xl font-black text-white animate-pulse">{correctCount}/{gameWords.length}</div>
+                            <div className="text-white/90 text-lg font-bold">✅ 正确单词 ✅</div>
+                        </div>
+                    </div>
+                    <button onClick={onBackToMenu} className="cute-button px-12 py-5 text-white font-black text-2xl hover:scale-110 transition-all">🏠 返回主页</button>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 relative overflow-hidden">
+            <ChristmasMusicPlayer play={playMusic} />
+            <video ref={videoRef} className="hidden" playsInline />
+            <audio ref={audioRef} />
+            <canvas ref={canvasRef} className="absolute inset-0 w-full h-full object-cover" />
+            
+            <Confetti active={showConfetti} />
+            {floatingScores.map(fs => <FloatingScore key={fs.id} score={fs.score} x={fs.x} y={fs.y} />)}
+            
+            {/* Score Panel */}
+            <div className="absolute top-4 left-4 z-20">
+                <div className="bg-white/90 backdrop-blur-lg rounded-3xl p-6 shadow-xl">
+                    <div className="flex items-center gap-4 mb-4">
+                        <span className="text-4xl">⭐</span>
+                        <div><div className="text-3xl font-black text-gray-800">{score}</div><div className="text-sm text-gray-500">分数</div></div>
+                    </div>
+                    <div className="flex items-center gap-4 mb-4">
+                        <span className="text-4xl">🔥</span>
+                        <div><div className="text-2xl font-bold text-candy-orange">{combo}x</div><div className="text-sm text-gray-500">连击</div></div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <span className="text-4xl">✅</span>
+                        <div><div className="text-2xl font-bold text-candy-green">{correctCount}/{gameWords.length}</div><div className="text-sm text-gray-500">正确</div></div>
+                    </div>
+                </div>
+            </div>
+            
+            {/* Control Panel */}
+            <div className="absolute top-4 right-4 z-20">
+                <div className="bg-white/90 backdrop-blur-lg rounded-3xl p-4 shadow-xl">
+                    <div className="flex flex-col gap-3">
+                        <label className="cute-button px-4 py-2 text-white font-bold text-sm cursor-pointer text-center">
+                            🎵 上传音乐<input type="file" accept="audio/*" onChange={handleMusicUpload} className="hidden" />
+                        </label>
+                        <button onClick={() => setShowSettings(!showSettings)} className="bg-gradient-to-r from-candy-purple to-candy-blue px-4 py-2 text-white font-bold text-sm rounded-full">⚙️ AI 设置</button>
+                        <button onClick={onBackToMenu} className="bg-gradient-to-r from-gray-400 to-gray-500 px-4 py-2 text-white font-bold text-sm rounded-full">🏠 返回</button>
+                    </div>
+                </div>
+                {showSettings && (
+                    <div className="mt-4 bg-white/90 backdrop-blur-lg rounded-3xl p-4 shadow-xl">
+                        <h3 className="font-bold text-gray-800 mb-2">🤖 Gemini API Key</h3>
+                        <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="输入 API Key" className="w-full px-4 py-2 rounded-xl border-2 border-candy-pink" />
+                    </div>
+                )}
+            </div>
+            
+            {/* Word Display - English only, no Chinese */}
+            {currentWord && (
+                <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-20">
+                    <div className="word-bubble px-12 py-8 text-center animate-float">
+                        <div className="text-6xl font-black text-gray-800">{currentWord.word}</div>
+                    </div>
+                </div>
+            )}
+            
+            {/* AI Message */}
+            {aiMessage && (
+                <div className="absolute top-40 left-1/2 transform -translate-x-1/2 z-20">
+                    <div className="bg-white/90 backdrop-blur-lg rounded-full px-8 py-3 shadow-lg animate-bounce">
+                        <span className="text-xl font-bold text-candy-purple">{aiMessage}</span>
+                    </div>
+                </div>
+            )}
+            
+            {/* Image Options */}
+            {currentImages.length > 0 && (
+                <div className="absolute bottom-32 left-0 right-0 flex justify-around px-8 z-20">
+                    {currentImages.map((img, index) => {
+                        const position = index === 0 ? 'left' : index === 1 ? 'center' : 'right';
+                        const isHighlighted = highlightedPosition === position;
+                        return (
+                            <div key={`${currentWordIndex}-${index}`} className={`image-card bg-white rounded-3xl p-3 shadow-2xl ${isHighlighted ? 'selected ring-4 ring-candy-yellow' : ''}`} style={{ width: '250px' }}>
+                                <img src={img.url} alt={img.label} className="w-full h-48 object-cover rounded-2xl" onError={(e) => { e.target.src = `https://via.placeholder.com/300?text=${img.label}`; }} />
+                                {isHighlighted && (
+                                    <div className="mt-3">
+                                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                            <div className="h-full bg-candy-green transition-all" style={{ width: `${holdProgress}%` }} />
+                                        </div>
+                                        <div className="text-center text-xs text-gray-500 mt-1">保持位置选择</div>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+            
+            {/* Position Indicator */}
+            <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20">
+                <div className="bg-white/80 backdrop-blur-lg rounded-full px-8 py-3 shadow-lg">
+                    <div className="flex items-center gap-4">
+                        <div className={`w-4 h-4 rounded-full transition-all ${userPosition === 'left' ? 'bg-candy-green scale-150' : 'bg-gray-300'}`} />
+                        <span className="text-gray-600 font-bold">左</span>
+                        <div className={`w-4 h-4 rounded-full transition-all ${userPosition === 'center' ? 'bg-candy-green scale-150' : 'bg-gray-300'}`} />
+                        <span className="text-gray-600 font-bold">中</span>
+                        <div className={`w-4 h-4 rounded-full transition-all ${userPosition === 'right' ? 'bg-candy-green scale-150' : 'bg-gray-300'}`} />
+                        <span className="text-gray-600 font-bold">右</span>
+                    </div>
+                </div>
+            </div>
+            
+            {/* Audio Visualizer */}
+            {isPlaying && audioData.length > 0 && (
+                <div className="absolute bottom-0 left-0 right-0 h-16 flex items-end justify-center gap-1 z-10 opacity-50">
+                    {audioData.slice(0, 32).map((v, i) => (
+                        <div key={i} className="w-2 bg-gradient-to-t from-candy-pink to-candy-yellow rounded-t" style={{ height: `${v / 4}px` }} />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+// Welcome Screen - Click to start (unlocks audio)
+const WelcomeScreen = ({ onStart }) => {
+    const handleClick = () => {
+        unlockAudio();
+        onStart();
+    };
+    
+    return (
+        <div onClick={handleClick} className="fixed inset-0 cursor-pointer flex flex-col items-center justify-center z-50" style={{
+            backgroundImage: 'url(https://images.unsplash.com/photo-1482517967863-00e15c9b44be?w=1920&q=80)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+        }}>
+            <div className="absolute inset-0 bg-black/50" />
+            <div className="text-center z-10">
+                <div className="text-9xl mb-8 animate-bounce">🎄</div>
+                <h1 className="text-6xl font-black text-white mb-6" style={{ textShadow: '3px 3px 10px rgba(0,0,0,0.8)' }}>
+                    🎅 单词小勇士 🎅
+                </h1>
+                <p className="text-3xl text-white mb-8" style={{ textShadow: '2px 2px 6px rgba(0,0,0,0.8)' }}>
+                    Christmas Word Hero
+                </p>
+                <div className="bg-white/90 backdrop-blur-lg rounded-full px-12 py-6 shadow-2xl animate-pulse">
+                    <span className="text-3xl font-black text-candy-pink">👆 点击屏幕开始 👆</span>
+                </div>
+                <p className="text-xl text-white/80 mt-6" style={{ textShadow: '1px 1px 4px rgba(0,0,0,0.8)' }}>
+                    🔊 点击后将播放圣诞音乐
+                </p>
+            </div>
+            <div className="absolute bottom-10 flex gap-8">
+                {['🎅','🦌','⛄','🎁','❄️','🎄'].map((e, i) => (
+                    <span key={i} className="text-6xl animate-bounce" style={{ animationDelay: `${i*0.15}s` }}>{e}</span>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+// Main App
+const App = () => {
+    const [screen, setScreen] = useState('welcome');
+    const [loadingProgress, setLoadingProgress] = useState(0);
+    const [selectedWords, setSelectedWords] = useState([]);
+
+    useEffect(() => {
+        if (screen === 'loading') {
+            const interval = setInterval(() => {
+                setLoadingProgress(prev => {
+                    if (prev >= 100) { clearInterval(interval); return 100; }
+                    return prev + Math.random() * 15;
+                });
+            }, 200);
+            return () => clearInterval(interval);
+        }
+    }, [screen]);
+
+    const handleStartGame = (words) => { setSelectedWords(words); setScreen('game'); };
+    const handleBackToMenu = () => { setScreen('selection'); setSelectedWords([]); };
+
+    if (screen === 'welcome') return <WelcomeScreen onStart={() => { setLoadingProgress(0); setScreen('loading'); }} />;
+    if (screen === 'loading') return <LoadingScreen progress={loadingProgress} onComplete={() => setScreen('selection')} />;
+    if (screen === 'selection') return <WordSelectionScreen onStartGame={handleStartGame} />;
+    if (screen === 'game') return <GameScreen selectedWords={selectedWords} onBackToMenu={handleBackToMenu} />;
+    return null;
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
