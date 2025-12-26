@@ -1,0 +1,16 @@
+{
+  "name": "word-picture-game",
+  "version": "1.0.0",
+  "description": "单词小勇士 - 适合3-6岁儿童的单词学习游戏",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["education", "kids", "learning", "english", "game"],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.x"
+  }
+}
