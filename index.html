@@ -10,7 +10,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="wordbank.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
@@ -59,6 +58,26 @@
         .image-card.selected { transform: scale(1.08); box-shadow: 0 0 30px rgba(78, 205, 196, 0.8); }
         .skeleton-glow { filter: drop-shadow(0 0 15px #4ECDC4) drop-shadow(0 0 30px #4ECDC4); }
     </style>
+    <script>
+        // Inline wordbank.js content for Vercel deployment
+        // Twemoji CDN base URL - reliable emoji images
+        const TWEMOJI = (code) => `https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/${code}.svg`;
+
+        // Helper function to create word entry with generic placeholder images
+        function createWordEntry(word, chinese, emoji = "📝") {
+            return {
+                word: word,
+                chinese: chinese,
+                emoji: emoji,
+                images: [
+                    { url: `https://via.placeholder.com/300x200/FF6B9D/FFFFFF?text=${encodeURIComponent(word)}`, label: word, correct: true },
+                    { url: `https://via.placeholder.com/300x200/4ECDC4/FFFFFF?text=Option+2`, label: "Option 2", correct: false },
+                    { url: `https://via.placeholder.com/300x200/FFE66D/333333?text=Option+3`, label: "Option 3", correct: false }
+                ]
+            };
+        }
+    </script>
+    <script src="wordbank.js"></script>
 </head>
 <body class="bg-gradient-to-br from-purple-400 via-pink-300 to-blue-400 min-h-screen">
 <div id="root"></div>
