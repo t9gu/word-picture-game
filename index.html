@@ -1570,8 +1570,124 @@ const GameScreen = ({ selectedWords, onBackToMenu }) => {
     );
 };
 
-// Camera Permission Screen
+// Camera Permission Screen - with real permission request
 const CameraPermissionScreen = ({ onAllow, onDeny }) => {
+    const [status, setStatus] = useState('idle'); // idle, requesting, error
+    const [errorMsg, setErrorMsg] = useState('');
+    
+    // Check browser compatibility
+    const checkBrowserSupport = () => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            return { supported: false, reason: '您的浏览器不支持摄像头功能，请使用 Chrome、Edge 或 Firefox 浏览器' };
+        }
+        if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            return { supported: false, reason: '摄像头功能需要 HTTPS 连接，请使用安全连接访问' };
+        }
+        return { supported: true };
+    };
+    
+    const requestCamera = async () => {
+        setStatus('requesting');
+        setErrorMsg('');
+        
+        // Check browser support first
+        const support = checkBrowserSupport();
+        if (!support.supported) {
+            setStatus('error');
+            setErrorMsg(support.reason);
+            return;
+        }
+        
+        try {
+            // Request camera permission with multiple fallback constraints
+            const constraints = [
+                { video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } },
+                { video: { facingMode: 'user' } },
+                { video: true }
+            ];
+            
+            let stream = null;
+            for (const constraint of constraints) {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia(constraint);
+                    break;
+                } catch (e) {
+                    continue;
+                }
+            }
+            
+            if (stream) {
+                // Success - stop the test stream and proceed
+                stream.getTracks().forEach(track => track.stop());
+                onAllow();
+            } else {
+                throw new Error('无法获取摄像头流');
+            }
+        } catch (err) {
+            setStatus('error');
+            
+            // Provide helpful error messages based on error type
+            let errorMessage = '';
+            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                errorMessage = '摄像头权限被拒绝。请在浏览器设置中允许访问摄像头，然后刷新页面重试。';
+                console.error('❌ [摄像头错误] NotAllowedError - 权限被拒绝', {
+                    errorName: err.name,
+                    errorMessage: err.message,
+                    解决方案: '用户需要在浏览器弹窗中点击"允许"，或在浏览器设置中启用摄像头权限'
+                });
+            } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                errorMessage = '未检测到摄像头。请确保您的电脑有摄像头并且已正确连接。';
+                console.error('❌ [摄像头错误] NotFoundError - 未检测到摄像头', {
+                    errorName: err.name,
+                    errorMessage: err.message,
+                    解决方案: '1. 检查摄像头是否已连接 2. 检查设备管理器中摄像头驱动是否正常'
+                });
+            } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+                errorMessage = '摄像头被其他程序占用。请关闭其他使用摄像头的程序（如 Zoom、Teams 等）后重试。';
+                console.error('❌ [摄像头错误] NotReadableError - 摄像头被占用', {
+                    errorName: err.name,
+                    errorMessage: err.message,
+                    解决方案: '关闭其他使用摄像头的应用（Zoom、Teams、Skype、微信视频等）'
+                });
+            } else if (err.name === 'OverconstrainedError') {
+                errorMessage = '摄像头不满足要求。请尝试使用其他摄像头。';
+                console.error('❌ [摄像头错误] OverconstrainedError - 摄像头不满足要求', {
+                    errorName: err.name,
+                    errorMessage: err.message,
+                    解决方案: '摄像头不支持请求的分辨率或配置，尝试使用其他摄像头'
+                });
+            } else if (err.name === 'SecurityError') {
+                errorMessage = '安全限制：请使用 HTTPS 连接或 localhost 访问。';
+                console.error('❌ [摄像头错误] SecurityError - 安全限制', {
+                    errorName: err.name,
+                    errorMessage: err.message,
+                    当前协议: window.location.protocol,
+                    当前域名: window.location.hostname,
+                    解决方案: '摄像头需要 HTTPS 连接，或使用 localhost/127.0.0.1 访问'
+                });
+            } else {
+                errorMessage = `摄像头错误: ${err.message || '未知错误'}。请检查系统摄像头设置。`;
+                console.error('❌ [摄像头错误] 未知错误类型', {
+                    errorName: err.name,
+                    errorMessage: err.message,
+                    errorStack: err.stack,
+                    完整错误对象: err
+                });
+            }
+            
+            setErrorMsg(errorMessage);
+            
+            // Additional system info for debugging
+            console.error('📊 [系统信息]', {
+                浏览器: navigator.userAgent,
+                操作系统: navigator.platform,
+                协议: window.location.protocol,
+                域名: window.location.hostname,
+                是否支持getUserMedia: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)
+            });
+        }
+    };
+    
     return (
         <div className="fixed inset-0 flex items-center justify-center z-50" style={{
             backgroundImage: 'url(https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?w=1920&q=80)',
@@ -1592,15 +1708,42 @@ const CameraPermissionScreen = ({ onAllow, onDeny }) => {
                 <p className="text-xl text-gray-600 mb-3">
                     游戏需要使用摄像头来识别你的动作
                 </p>
-                <p className="text-lg text-gray-500 mb-8">
-                    请允许访问摄像头以继续游戏 🐴
-                </p>
+                
+                {status === 'error' && (
+                    <div className="bg-red-100 border-2 border-red-400 rounded-2xl p-4 mb-6">
+                        <p className="text-red-700 font-bold">❌ {errorMsg}</p>
+                        <div className="mt-3 text-sm text-red-600">
+                            <p className="font-bold mb-1">💡 Windows 用户提示：</p>
+                            <p>1. 打开 Windows 设置 → 隐私 → 摄像头</p>
+                            <p>2. 确保"允许应用访问摄像头"已开启</p>
+                            <p>3. 确保浏览器有摄像头权限</p>
+                        </div>
+                    </div>
+                )}
+                
+                {status === 'requesting' ? (
+                    <div className="mb-8">
+                        <div className="flex items-center justify-center gap-2">
+                            <div className="w-4 h-4 bg-candy-pink rounded-full animate-bounce"></div>
+                            <div className="w-4 h-4 bg-candy-orange rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                            <div className="w-4 h-4 bg-candy-yellow rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        </div>
+                        <p className="text-gray-600 mt-3">正在请求摄像头权限...</p>
+                        <p className="text-sm text-gray-500 mt-1">请在浏览器弹窗中点击"允许"</p>
+                    </div>
+                ) : (
+                    <p className="text-lg text-gray-500 mb-8">
+                        点击下方按钮请求摄像头权限 🐴
+                    </p>
+                )}
+                
                 <div className="flex gap-4 justify-center">
                     <button 
-                        onClick={onAllow}
-                        className="cute-button px-10 py-5 text-white font-black text-2xl animate-pulse"
+                        onClick={requestCamera}
+                        disabled={status === 'requesting'}
+                        className={`cute-button px-10 py-5 text-white font-black text-2xl ${status === 'requesting' ? 'opacity-50' : 'animate-pulse'}`}
                     >
-                        ✅ 允许使用
+                        {status === 'error' ? '🔄 重试' : '✅ 允许使用'}
                     </button>
                     <button 
                         onClick={onDeny}
