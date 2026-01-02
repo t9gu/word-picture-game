@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌈 单词小勇士 - Word Hero</title>
+    <title>🐴 单词小勇士 - Word Hero</title>
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -29,6 +29,14 @@
         @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
         @keyframes scorePop { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-60px) scale(1.2); opacity: 0; } }
         @keyframes confettiFall { 0% { transform: translateY(-100vh) rotate(0deg); } 100% { transform: translateY(100vh) rotate(720deg); } }
+        @keyframes brickBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        @keyframes brickHit { 0% { transform: scale(1); } 50% { transform: scale(1.2) translateY(-20px); } 100% { transform: scale(1); } }
+        @keyframes horseRun { 0% { transform: translateX(0) scaleX(1); } 25% { transform: translateX(10px) scaleX(1); } 50% { transform: translateX(0) scaleX(1); } 75% { transform: translateX(-10px) scaleX(1); } 100% { transform: translateX(0) scaleX(1); } }
+        @keyframes wrongShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
+        .animate-brick-bounce { animation: brickBounce 1s ease-in-out infinite; }
+        .animate-brick-hit { animation: brickHit 0.3s ease-out; }
+        .animate-horse-run { animation: horseRun 0.5s ease-in-out infinite; }
+        .animate-wrong-shake { animation: wrongShake 0.3s ease-in-out; }
         @keyframes gradient-move { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         @keyframes sparkle-burst { 
             0% { transform: translate(-50%, -50%) scale(0); opacity: 1; } 
@@ -85,8 +93,8 @@ const unlockAudio = () => {
     ctx.close();
 };
 
-// Christmas music - Extended melodies using Web Audio API
-const ChristmasMusicPlayer = ({ play }) => {
+// Horse-themed music - Galloping rhythm and cheerful melodies
+const HorseMusicPlayer = ({ play }) => {
     const audioContextRef = useRef(null);
     const isPlayingRef = useRef(false);
     
@@ -123,26 +131,28 @@ const ChristmasMusicPlayer = ({ play }) => {
         const C4=261.63, D4=293.66, E4=329.63, F4=349.23, G4=392.00, A4=440.00, B4=493.88;
         const C5=523.25, D5=587.33, E5=659.25, F5=698.46, G5=783.99;
         
-        // Extended Christmas medley - about 60 seconds total
+        // Horse-themed melodies - galloping rhythm, cheerful tunes
         const melodies = [
-            // Jingle Bells (full verse) ~15s
-            [[E4,0.4],[E4,0.4],[E4,0.8],[E4,0.4],[E4,0.4],[E4,0.8],[E4,0.4],[G4,0.4],[C4,0.4],[D4,0.4],[E4,1.2],
-             [F4,0.4],[F4,0.4],[F4,0.4],[F4,0.4],[F4,0.4],[E4,0.4],[E4,0.4],[E4,0.2],[E4,0.2],[E4,0.4],[D4,0.4],[D4,0.4],[E4,0.4],[D4,0.8],[G4,0.8],
-             [E4,0.4],[E4,0.4],[E4,0.8],[E4,0.4],[E4,0.4],[E4,0.8],[E4,0.4],[G4,0.4],[C4,0.4],[D4,0.4],[E4,1.2],
-             [F4,0.4],[F4,0.4],[F4,0.4],[F4,0.4],[F4,0.4],[E4,0.4],[E4,0.4],[E4,0.4],[G4,0.4],[G4,0.4],[F4,0.4],[D4,0.4],[C4,1.6]],
-            // We Wish You a Merry Christmas ~12s
-            [[G4,0.4],[C5,0.4],[C5,0.3],[D5,0.3],[C5,0.3],[B4,0.4],[A4,0.8],[A4,0.4],[D5,0.4],[D5,0.3],[E5,0.3],[D5,0.3],[C5,0.4],[B4,0.8],[G4,0.4],
-             [E5,0.4],[E5,0.3],[F5,0.3],[E5,0.3],[D5,0.4],[C5,0.4],[A4,0.4],[G4,0.3],[G4,0.3],[A4,0.4],[D5,0.4],[B4,0.4],[C5,1.2]],
-            // Silent Night ~15s
-            [[G4,0.6],[A4,0.3],[G4,0.6],[E4,1.2],[G4,0.6],[A4,0.3],[G4,0.6],[E4,1.2],
-             [D5,0.9],[D5,0.6],[B4,1.2],[C5,0.9],[C5,0.6],[G4,1.2],
-             [A4,0.9],[A4,0.6],[C5,0.6],[B4,0.3],[A4,0.6],[G4,0.6],[A4,0.3],[G4,0.6],[E4,1.2],
-             [A4,0.9],[A4,0.6],[C5,0.6],[B4,0.3],[A4,0.6],[G4,0.6],[A4,0.3],[G4,0.6],[E4,1.2],
-             [D5,0.9],[D5,0.6],[F5,0.6],[D5,0.3],[B4,0.6],[C5,1.5],[E5,1.5],[C5,0.6],[G4,0.3],[E4,0.6],[G4,0.6],[F4,0.3],[D4,0.6],[C4,2.0]],
-            // Deck the Halls ~10s
-            [[C5,0.6],[B4,0.3],[A4,0.6],[G4,0.6],[F4,0.6],[E4,0.6],[F4,0.6],[G4,0.6],
-             [C5,0.6],[B4,0.3],[A4,0.6],[G4,0.6],[F4,0.6],[E4,0.6],[F4,0.6],[G4,0.6],
-             [A4,0.6],[B4,0.3],[C5,0.6],[A4,0.6],[B4,0.4],[C5,0.4],[D5,0.4],[B4,0.6],[C5,1.2]]
+            // Galloping melody - upbeat and energetic
+            [[G4,0.2],[G4,0.2],[E4,0.2],[G4,0.2],[C5,0.4],[B4,0.2],[A4,0.2],[G4,0.4],
+             [G4,0.2],[G4,0.2],[E4,0.2],[G4,0.2],[D5,0.4],[C5,0.2],[B4,0.2],[A4,0.4],
+             [A4,0.2],[A4,0.2],[F4,0.2],[A4,0.2],[E5,0.4],[D5,0.2],[C5,0.2],[B4,0.4],
+             [G4,0.2],[A4,0.2],[B4,0.2],[C5,0.2],[D5,0.4],[E5,0.4],[C5,0.8]],
+            // Camptown Races style - horse racing feel
+            [[C5,0.3],[C5,0.3],[A4,0.3],[C5,0.3],[E5,0.6],[E5,0.3],[D5,0.3],
+             [C5,0.3],[C5,0.3],[A4,0.3],[C5,0.3],[D5,0.9],[D5,0.3],
+             [C5,0.3],[C5,0.3],[A4,0.3],[C5,0.3],[E5,0.6],[E5,0.3],[D5,0.3],
+             [C5,0.3],[A4,0.3],[C5,0.3],[D5,0.3],[C5,1.2]],
+            // William Tell Overture style - iconic horse gallop
+            [[G4,0.15],[G4,0.15],[G4,0.15],[G4,0.15],[G4,0.15],[G4,0.15],[G4,0.3],
+             [G4,0.15],[G4,0.15],[G4,0.15],[G4,0.15],[G4,0.15],[G4,0.15],[B4,0.3],
+             [D5,0.15],[D5,0.15],[D5,0.15],[D5,0.15],[D5,0.15],[D5,0.15],[D5,0.3],
+             [B4,0.15],[B4,0.15],[G4,0.15],[G4,0.15],[D5,0.3],[B4,0.3],[G4,0.6]],
+            // Happy trotting melody
+            [[E4,0.25],[G4,0.25],[C5,0.5],[E5,0.25],[D5,0.25],[C5,0.5],
+             [E4,0.25],[G4,0.25],[B4,0.5],[D5,0.25],[C5,0.25],[B4,0.5],
+             [C5,0.25],[E5,0.25],[G5,0.5],[E5,0.25],[D5,0.25],[C5,0.5],
+             [B4,0.25],[A4,0.25],[G4,0.5],[E4,0.25],[D4,0.25],[C4,0.5]]
         ];
         
         const playMelody = (melodyIndex) => {
@@ -150,8 +160,8 @@ const ChristmasMusicPlayer = ({ play }) => {
             const melody = melodies[melodyIndex % melodies.length];
             let time = ctx.currentTime + 0.1;
             melody.forEach(([freq, dur]) => {
-                playNote(freq, time, dur, 'sine', 0.05);
-                playNote(freq * 2, time, dur, 'triangle', 0.02); // Harmonics
+                playNote(freq, time, dur, 'square', 0.04);
+                playNote(freq * 0.5, time, dur, 'triangle', 0.02); // Bass
                 time += dur;
             });
             // Schedule next melody
@@ -175,64 +185,91 @@ const ChristmasMusicPlayer = ({ play }) => {
     return null;
 };
 
-// Victory celebration sound - More exciting for kids
+// Victory celebration sound - More exciting for kids (brick hit sound + horse neigh)
 const playVictorySound = () => {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     
-    // Fanfare notes - triumphant ascending arpeggio
-    const fanfare = [
-        [523.25, 0, 0.15], [659.25, 0.12, 0.15], [783.99, 0.24, 0.15], [1046.50, 0.36, 0.3],
-        [783.99, 0.6, 0.1], [1046.50, 0.7, 0.1], [1318.51, 0.8, 0.4]
+    // Mario-style coin/brick hit sound
+    const coinSound = [
+        [988, 0, 0.08], [1319, 0.08, 0.3]
     ];
-    
-    fanfare.forEach(([freq, delay, dur]) => {
+    coinSound.forEach(([freq, delay, dur]) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.frequency.value = freq;
         osc.type = 'square';
-        gain.gain.setValueAtTime(0.15, ctx.currentTime + delay);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime + delay);
         gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
         osc.start(ctx.currentTime + delay);
         osc.stop(ctx.currentTime + delay + dur);
     });
     
+    // Horse neigh simulation (frequency sweep)
+    const neighOsc = ctx.createOscillator();
+    const neighGain = ctx.createGain();
+    neighOsc.connect(neighGain);
+    neighGain.connect(ctx.destination);
+    neighOsc.type = 'sawtooth';
+    neighOsc.frequency.setValueAtTime(400, ctx.currentTime + 0.3);
+    neighOsc.frequency.linearRampToValueAtTime(800, ctx.currentTime + 0.5);
+    neighOsc.frequency.linearRampToValueAtTime(600, ctx.currentTime + 0.7);
+    neighOsc.frequency.linearRampToValueAtTime(900, ctx.currentTime + 0.9);
+    neighOsc.frequency.linearRampToValueAtTime(500, ctx.currentTime + 1.1);
+    neighGain.gain.setValueAtTime(0, ctx.currentTime + 0.3);
+    neighGain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.4);
+    neighGain.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 0.7);
+    neighGain.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 0.9);
+    neighGain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+    neighOsc.start(ctx.currentTime + 0.3);
+    neighOsc.stop(ctx.currentTime + 1.2);
+    
     // Sparkle sounds
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 5; i++) {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.connect(gain);
         gain.connect(ctx.destination);
-        osc.frequency.value = 2000 + Math.random() * 2000;
+        osc.frequency.value = 1500 + Math.random() * 1500;
         osc.type = 'sine';
-        const start = ctx.currentTime + 1 + i * 0.15;
-        gain.gain.setValueAtTime(0.08, start);
-        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.2);
+        const start = ctx.currentTime + 0.4 + i * 0.1;
+        gain.gain.setValueAtTime(0.06, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.15);
         osc.start(start);
-        osc.stop(start + 0.2);
+        osc.stop(start + 0.15);
     }
+};
+
+// Wrong answer sound - descending tone
+const playWrongSound = () => {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
     
-    // Cheering crowd simulation
-    const bufferSize = ctx.sampleRate * 2.5;
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-        const envelope = Math.sin(Math.PI * i / bufferSize) * 0.8;
-        data[i] = (Math.random() * 2 - 1) * envelope;
-    }
-    const noise = ctx.createBufferSource();
-    noise.buffer = buffer;
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.value = 1500;
-    filter.Q.value = 0.5;
-    const noiseGain = ctx.createGain();
-    noise.connect(filter);
-    filter.connect(noiseGain);
-    noiseGain.connect(ctx.destination);
-    noiseGain.gain.setValueAtTime(0.12, ctx.currentTime + 0.3);
-    noise.start(ctx.currentTime + 0.3);
+    // Descending "wah wah" sound
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(400, ctx.currentTime);
+    osc.frequency.linearRampToValueAtTime(200, ctx.currentTime + 0.3);
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.4);
+    
+    // Second lower tone
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.type = 'triangle';
+    osc2.frequency.setValueAtTime(300, ctx.currentTime + 0.2);
+    osc2.frequency.linearRampToValueAtTime(150, ctx.currentTime + 0.5);
+    gain2.gain.setValueAtTime(0.12, ctx.currentTime + 0.2);
+    gain2.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+    osc2.start(ctx.currentTime + 0.2);
+    osc2.stop(ctx.currentTime + 0.6);
 };
 
 // Text-to-speech helper
@@ -247,7 +284,7 @@ const speakWord = (word) => {
     }
 };
 
-// Word Selection Screen with Christmas music
+// Word Selection Screen with Horse theme music
 const WordSelectionScreen = ({ onStartGame, cameraPermissionGranted }) => {
     const [selectedUnits, setSelectedUnits] = useState([]);
     const [playMusic, setPlayMusic] = useState(true);
@@ -305,26 +342,26 @@ const WordSelectionScreen = ({ onStartGame, cameraPermissionGranted }) => {
     
     return (
         <div className="min-h-screen max-h-screen overflow-y-auto p-8 relative" style={{
-            backgroundImage: 'url(https://images.unsplash.com/photo-1512389142860-9c449e58a543?w=1920&q=80)',
+            backgroundImage: 'url(https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?w=1920&q=80)',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundAttachment: 'fixed'
         }}>
             <video ref={videoRef} className="hidden" playsInline />
-            <div className="absolute inset-0 bg-black/50 pointer-events-none" />
-            <ChristmasMusicPlayer play={playMusic} />
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-900/60 via-red-800/50 to-yellow-700/60 pointer-events-none" />
+            <HorseMusicPlayer play={playMusic} />
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 {[...Array(15)].map((_, i) => (
                     <div key={i} className="absolute animate-float text-3xl" style={{ left: `${Math.random()*100}%`, top: `${Math.random()*100}%`, animationDelay: `${Math.random()*3}s`, opacity: 0.7 }}>
-                        {['❄️','🎄','⭐','🎁','🔔'][i%5]}
+                        {['🐴','🏇','⭐','🎠','🌾'][i%5]}
                     </div>
                 ))}
             </div>
             <div className="max-w-7xl mx-auto relative z-10 pb-20">
                 <div className="text-center mb-8">
-                    <h1 className="text-5xl font-black text-white drop-shadow-lg mb-4 animate-wiggle" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.8)' }}>🎄 选择学习单元 🎄</h1>
+                    <h1 className="text-5xl font-black text-white drop-shadow-lg mb-4 animate-wiggle" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.8)' }}>🐴 选择学习单元 🐴</h1>
                     <p className="text-xl text-white" style={{ textShadow: '1px 1px 4px rgba(0,0,0,0.8)' }}>已选择 <span className="font-bold text-candy-yellow">{getSelectedWordsCount()}</span> 个单词</p>
-                    <p className="text-sm text-white/90 mt-2" style={{ textShadow: '1px 1px 4px rgba(0,0,0,0.8)' }}>� 点击单元卡片选择要学习的内容</p>
+                    <p className="text-sm text-white/90 mt-2" style={{ textShadow: '1px 1px 4px rgba(0,0,0,0.8)' }}>👆 点击单元卡片选择要学习的内容</p>
                 </div>
                 
                 {/* KET Topics */}
@@ -402,7 +439,7 @@ const WordSelectionScreen = ({ onStartGame, cameraPermissionGranted }) => {
                             getSelectedWordsCount() === 0 ? 'opacity-50 cursor-not-allowed' : 'animate-pulse'
                         }`}
                     >
-                        🎅 开始游戏！
+                        🐴 开始游戏！
                     </button>
                 </div>
             </div>
@@ -637,7 +674,6 @@ const GameScreen = ({ selectedWords, onBackToMenu }) => {
     const audioContextRef = useRef(null);
     const analyserRef = useRef(null);
     const bgMusicRef = useRef(null);
-    const christmasBgRef = useRef(null);
     const cameraRef = useRef(null);
     const poseRef = useRef(null);
     const shouldProcessRef = useRef(true);
@@ -645,6 +681,7 @@ const GameScreen = ({ selectedWords, onBackToMenu }) => {
     const [score, setScore] = useState(0);
     const [combo, setCombo] = useState(0);
     const [correctCount, setCorrectCount] = useState(0);
+    const [wrongCount, setWrongCount] = useState(0);
     const [currentWordIndex, setCurrentWordIndex] = useState(0);
     const [userPosition, setUserPosition] = useState('center');
     const [showConfetti, setShowConfetti] = useState(false);
@@ -656,29 +693,38 @@ const GameScreen = ({ selectedWords, onBackToMenu }) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [gameWords, setGameWords] = useState([]);
     const [isGameComplete, setIsGameComplete] = useState(false);
-    const [highlightedPosition, setHighlightedPosition] = useState('');
-    const [holdProgress, setHoldProgress] = useState(0);
+    const [hitBrick, setHitBrick] = useState(null);
+    const [wrongBrick, setWrongBrick] = useState(null);
+    const [headY, setHeadY] = useState(0);
     
-    const lastPositionRef = useRef('');
-    const selectionTimeoutRef = useRef(null);
-    const holdStartRef = useRef(null);
     const processingRef = useRef(false);
     const gameWordsRef = useRef([]);
     const currentWordIndexRef = useRef(0);
     const isGameCompleteRef = useRef(false);
     const currentImagesRef = useRef([]);
+    const lastHitTimeRef = useRef(0);
     
     const [playMusic, setPlayMusic] = useState(true);
-    const snowflakesRef = useRef([]);
+    const particlesRef = useRef([]);
     
-    // Initialize snowflakes
+    // Brick positions (top of screen, Mario-style)
+    const BRICK_Y = 120;
+    const BRICK_WIDTH = 200;
+    const BRICK_HEIGHT = 100;
+    const BRICK_POSITIONS = [
+        { x: 160, label: 'left' },
+        { x: 640, label: 'center' },
+        { x: 1120, label: 'right' }
+    ];
+    
+    // Initialize floating particles (grass, flowers for horse theme)
     useEffect(() => {
-        snowflakesRef.current = Array.from({ length: 150 }, () => ({
+        particlesRef.current = Array.from({ length: 80 }, () => ({
             x: Math.random() * 1280,
             y: Math.random() * 720,
-            size: Math.random() * 4 + 2,
-            speed: Math.random() * 2 + 1,
-            drift: Math.random() * 2 - 1
+            size: Math.random() * 3 + 1,
+            speed: Math.random() * 1 + 0.5,
+            type: Math.random() > 0.7 ? 'flower' : 'grass'
         }));
     }, []);
     
@@ -754,243 +800,441 @@ const GameScreen = ({ selectedWords, onBackToMenu }) => {
         canvas.width = videoRef.current.videoWidth || 1280;
         canvas.height = videoRef.current.videoHeight || 720;
         
-        // Draw dynamic Christmas background with snow and trees
-        // Night sky gradient
+        // Draw Horse Zodiac theme background - sunny grassland
         const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        gradient.addColorStop(0, '#0d1b2a');
-        gradient.addColorStop(0.4, '#1b263b');
-        gradient.addColorStop(0.7, '#415a77');
-        gradient.addColorStop(1, '#778da9');
+        gradient.addColorStop(0, '#87CEEB');
+        gradient.addColorStop(0.3, '#B0E0E6');
+        gradient.addColorStop(0.6, '#98D8C8');
+        gradient.addColorStop(1, '#7CB342');
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // Draw stars
+        // Draw sun
         ctx.fillStyle = '#FFD700';
-        for (let i = 0; i < 50; i++) {
-            const x = (i * 137) % canvas.width;
-            const y = (i * 73) % (canvas.height * 0.4);
-            const twinkle = Math.sin(Date.now() / 500 + i) * 0.5 + 0.5;
-            ctx.globalAlpha = twinkle;
-            ctx.beginPath();
-            ctx.arc(x, y, 1 + Math.random(), 0, Math.PI * 2);
-            ctx.fill();
-        }
-        ctx.globalAlpha = 1;
-        
-        // Draw snow-covered ground
-        ctx.fillStyle = '#e8f4f8';
         ctx.beginPath();
-        ctx.moveTo(0, canvas.height - 80);
-        for (let x = 0; x <= canvas.width; x += 50) {
-            ctx.lineTo(x, canvas.height - 80 + Math.sin(x / 100) * 20);
-        }
-        ctx.lineTo(canvas.width, canvas.height);
-        ctx.lineTo(0, canvas.height);
+        ctx.arc(100, 80, 50, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#FFF59D';
+        ctx.beginPath();
+        ctx.arc(100, 80, 35, 0, Math.PI * 2);
         ctx.fill();
         
-        // Draw Christmas trees with decorations
-        const treePositions = [100, 350, 650, 950, 1180];
-        treePositions.forEach((treeX, idx) => {
-            const treeY = canvas.height - 70;
-            const treeHeight = 180 + (idx % 2) * 40;
-            
-            // Tree trunk
-            ctx.fillStyle = '#5D4037';
-            ctx.fillRect(treeX - 12, treeY - 20, 24, 40);
-            
-            // Tree layers
-            for (let layer = 0; layer < 3; layer++) {
-                const layerY = treeY - 20 - layer * 50;
-                const layerWidth = 70 - layer * 15;
-                ctx.fillStyle = layer % 2 === 0 ? '#1B5E20' : '#2E7D32';
-                ctx.beginPath();
-                ctx.moveTo(treeX, layerY - 60);
-                ctx.lineTo(treeX - layerWidth, layerY);
-                ctx.lineTo(treeX + layerWidth, layerY);
-                ctx.closePath();
-                ctx.fill();
-            }
-            
-            // Tree star
-            ctx.fillStyle = '#FFD700';
+        // Draw clouds
+        ctx.fillStyle = '#FFFFFF';
+        [[200, 100], [500, 60], [900, 90], [1100, 70]].forEach(([cx, cy]) => {
             ctx.beginPath();
-            ctx.arc(treeX, treeY - treeHeight + 10, 8, 0, Math.PI * 2);
+            ctx.arc(cx, cy, 30, 0, Math.PI * 2);
+            ctx.arc(cx + 35, cy - 10, 25, 0, Math.PI * 2);
+            ctx.arc(cx + 70, cy, 30, 0, Math.PI * 2);
+            ctx.arc(cx + 35, cy + 15, 20, 0, Math.PI * 2);
             ctx.fill();
-            
-            // Tree ornaments
-            const ornamentColors = ['#E53935', '#FFD700', '#2196F3', '#E91E63'];
-            for (let i = 0; i < 6; i++) {
-                ctx.fillStyle = ornamentColors[i % ornamentColors.length];
-                const ox = treeX + Math.cos(i * 1.2) * (25 + i * 5);
-                const oy = treeY - 50 - i * 20;
-                ctx.beginPath();
-                ctx.arc(ox, oy, 5, 0, Math.PI * 2);
-                ctx.fill();
-            }
         });
         
-        // Update and draw animated snowflakes
-        ctx.fillStyle = '#FFFFFF';
-        snowflakesRef.current.forEach(flake => {
-            flake.y += flake.speed;
-            flake.x += flake.drift + Math.sin(Date.now() / 1000 + flake.x) * 0.5;
-            
-            if (flake.y > canvas.height) {
-                flake.y = -10;
-                flake.x = Math.random() * canvas.width;
-            }
-            if (flake.x > canvas.width) flake.x = 0;
-            if (flake.x < 0) flake.x = canvas.width;
-            
+        // Draw green grass ground
+        ctx.fillStyle = '#4CAF50';
+        ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
+        ctx.fillStyle = '#388E3C';
+        for (let x = 0; x < canvas.width; x += 30) {
             ctx.beginPath();
-            ctx.arc(flake.x, flake.y, flake.size, 0, Math.PI * 2);
+            ctx.moveTo(x, canvas.height - 100);
+            ctx.lineTo(x + 15, canvas.height - 120 - Math.random() * 20);
+            ctx.lineTo(x + 30, canvas.height - 100);
             ctx.fill();
+        }
+        
+        // Draw decorative horses in background
+        const drawHorse = (x, y, scale, flip) => {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale * (flip ? -1 : 1), scale);
+            // Horse body
+            ctx.fillStyle = '#8B4513';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 40, 25, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Horse head
+            ctx.beginPath();
+            ctx.ellipse(45, -20, 20, 15, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            // Horse legs
+            ctx.fillRect(-25, 20, 8, 30);
+            ctx.fillRect(-5, 20, 8, 30);
+            ctx.fillRect(15, 20, 8, 30);
+            ctx.fillRect(30, 20, 8, 30);
+            // Mane
+            ctx.fillStyle = '#5D4037';
+            ctx.fillRect(20, -35, 25, 10);
+            // Tail
+            ctx.beginPath();
+            ctx.moveTo(-40, 0);
+            ctx.quadraticCurveTo(-60, 10, -55, 30);
+            ctx.lineWidth = 5;
+            ctx.strokeStyle = '#5D4037';
+            ctx.stroke();
+            // Eye
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(55, -22, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        };
+        drawHorse(150, canvas.height - 150, 0.6, false);
+        drawHorse(1100, canvas.height - 140, 0.5, true);
+        
+        // Draw floating particles (grass seeds, petals)
+        particlesRef.current.forEach(p => {
+            p.y -= p.speed;
+            p.x += Math.sin(Date.now() / 1000 + p.x) * 0.3;
+            if (p.y < 0) {
+                p.y = canvas.height;
+                p.x = Math.random() * canvas.width;
+            }
+            ctx.fillStyle = p.type === 'flower' ? '#FF69B4' : '#90EE90';
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+        });
+        
+        // Draw Mario-style bricks at top
+        const images = currentImagesRef.current;
+        BRICK_POSITIONS.forEach((brick, idx) => {
+            const isHit = hitBrick === idx;
+            const isWrong = wrongBrick === idx;
+            const brickY = BRICK_Y + (isHit ? -15 : 0);
+            
+            // Brick shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.fillRect(brick.x - BRICK_WIDTH/2 + 5, brickY - BRICK_HEIGHT/2 + 5, BRICK_WIDTH, BRICK_HEIGHT);
+            
+            // Main brick - golden/brown Mario style
+            const brickGrad = ctx.createLinearGradient(brick.x - BRICK_WIDTH/2, brickY - BRICK_HEIGHT/2, brick.x - BRICK_WIDTH/2, brickY + BRICK_HEIGHT/2);
+            brickGrad.addColorStop(0, isWrong ? '#FF6B6B' : '#FFD54F');
+            brickGrad.addColorStop(0.5, isWrong ? '#E53935' : '#FFB300');
+            brickGrad.addColorStop(1, isWrong ? '#C62828' : '#FF8F00');
+            ctx.fillStyle = brickGrad;
+            ctx.fillRect(brick.x - BRICK_WIDTH/2, brickY - BRICK_HEIGHT/2, BRICK_WIDTH, BRICK_HEIGHT);
+            
+            // Brick border
+            ctx.strokeStyle = '#5D4037';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(brick.x - BRICK_WIDTH/2, brickY - BRICK_HEIGHT/2, BRICK_WIDTH, BRICK_HEIGHT);
+            
+            // Question mark or image on brick
+            if (images && images[idx]) {
+                // Draw image placeholder text
+                ctx.fillStyle = '#FFF';
+                ctx.font = 'bold 40px Nunito';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('?', brick.x, brickY);
+            }
+            
+            // Shine effect
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.fillRect(brick.x - BRICK_WIDTH/2 + 5, brickY - BRICK_HEIGHT/2 + 5, BRICK_WIDTH - 10, 15);
         });
         
         if (results.poseLandmarks) {
             const landmarks = results.poseLandmarks.map(lm => ({ ...lm, x: 1 - lm.x }));
             
-            // Get body center position for Christmas character
+            // Get head position for brick collision
             const nose = landmarks[0];
             const leftShoulder = landmarks[11];
             const rightShoulder = landmarks[12];
             const leftHip = landmarks[23];
             const rightHip = landmarks[24];
             
+            const noseX = nose.x * canvas.width;
+            const noseY = nose.y * canvas.height;
             const centerX = (leftShoulder.x + rightShoulder.x) / 2 * canvas.width;
-            const centerY = (leftShoulder.y + rightShoulder.y) / 2 * canvas.height;
-            const headY = nose.y * canvas.height;
             const hipY = (leftHip.y + rightHip.y) / 2 * canvas.height;
-            const bodyHeight = hipY - headY;
-            const scale = Math.max(bodyHeight / 200, 0.5);
+            const bodyHeight = hipY - noseY;
+            const scale = Math.max(bodyHeight / 350, 0.3); // Smaller scale
+            
+            setHeadY(noseY);
             
             ctx.save();
-            ctx.translate(centerX, headY - 20 * scale);
+            ctx.translate(centerX, noseY + 20);
             ctx.scale(scale, scale);
             
-            // Draw cute Christmas character
-            // Santa hat
-            ctx.fillStyle = '#E53935';
-            ctx.beginPath();
-            ctx.moveTo(-40, 0);
-            ctx.quadraticCurveTo(0, -80, 40, 0);
-            ctx.fill();
-            ctx.fillStyle = '#FFFFFF';
-            ctx.beginPath();
-            ctx.arc(0, -70, 15, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(-50, -5, 100, 20);
+            // Draw cute cartoon pony with rider (matching reference image style)
             
-            // Face
-            ctx.fillStyle = '#FFCC80';
+            // === CUTE PONY ===
+            // Pony body - round and cute tan color
+            ctx.fillStyle = '#D4A574';
             ctx.beginPath();
-            ctx.arc(0, 40, 45, 0, Math.PI * 2);
+            ctx.ellipse(0, 60, 45, 30, 0, 0, Math.PI * 2);
             ctx.fill();
             
-            // Rosy cheeks
-            ctx.fillStyle = '#FFAB91';
+            // Pony spots
+            ctx.fillStyle = '#C4956A';
             ctx.beginPath();
-            ctx.arc(-25, 50, 12, 0, Math.PI * 2);
-            ctx.arc(25, 50, 12, 0, Math.PI * 2);
+            ctx.arc(-15, 55, 8, 0, Math.PI * 2);
+            ctx.arc(10, 65, 6, 0, Math.PI * 2);
             ctx.fill();
             
-            // Eyes
-            ctx.fillStyle = '#333';
+            // Pony head - round cute shape
+            ctx.fillStyle = '#D4A574';
             ctx.beginPath();
-            ctx.arc(-15, 35, 8, 0, Math.PI * 2);
-            ctx.arc(15, 35, 8, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#FFF';
-            ctx.beginPath();
-            ctx.arc(-13, 33, 3, 0, Math.PI * 2);
-            ctx.arc(17, 33, 3, 0, Math.PI * 2);
+            ctx.ellipse(40, 30, 22, 18, 0.2, 0, Math.PI * 2);
             ctx.fill();
             
-            // Smile
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 3;
+            // Pony snout
+            ctx.fillStyle = '#E8C9A8';
             ctx.beginPath();
-            ctx.arc(0, 45, 20, 0.2, Math.PI - 0.2);
+            ctx.ellipse(55, 38, 10, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Pony nostrils
+            ctx.fillStyle = '#B08968';
+            ctx.beginPath();
+            ctx.arc(53, 40, 2, 0, Math.PI * 2);
+            ctx.arc(58, 40, 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Pony ears - cute pointy
+            ctx.fillStyle = '#D4A574';
+            ctx.beginPath();
+            ctx.moveTo(30, 15);
+            ctx.quadraticCurveTo(25, -5, 35, 10);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(45, 12);
+            ctx.quadraticCurveTo(50, -8, 55, 8);
+            ctx.fill();
+            // Inner ear pink
+            ctx.fillStyle = '#FFB6C1';
+            ctx.beginPath();
+            ctx.moveTo(32, 12);
+            ctx.quadraticCurveTo(30, 2, 35, 10);
+            ctx.fill();
+            
+            // Pony mane - fluffy brown
+            ctx.fillStyle = '#8B6914';
+            ctx.beginPath();
+            ctx.moveTo(20, 20);
+            ctx.quadraticCurveTo(10, 10, 15, 25);
+            ctx.quadraticCurveTo(5, 20, 12, 35);
+            ctx.quadraticCurveTo(0, 30, 10, 45);
+            ctx.lineTo(25, 40);
+            ctx.fill();
+            
+            // Pony happy closed eyes (curved lines)
+            ctx.strokeStyle = '#5D4037';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(35, 28, 5, 0.3, Math.PI - 0.3);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(48, 28, 5, 0.3, Math.PI - 0.3);
             ctx.stroke();
             
-            // Body (red coat)
-            ctx.fillStyle = '#E53935';
+            // Pony rosy cheeks
+            ctx.fillStyle = '#FFB6C1';
             ctx.beginPath();
-            ctx.ellipse(0, 140, 55, 70, 0, 0, Math.PI * 2);
+            ctx.ellipse(30, 38, 6, 4, 0, 0, Math.PI * 2);
+            ctx.ellipse(52, 35, 6, 4, 0, 0, Math.PI * 2);
             ctx.fill();
             
-            // White trim
+            // Pony smile
+            ctx.strokeStyle = '#5D4037';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(45, 42, 8, 0.2, Math.PI - 0.2);
+            ctx.stroke();
+            
+            // Flower necklace on pony
+            const flowerColors = ['#FF69B4', '#FFD700', '#87CEEB', '#98FB98', '#DDA0DD'];
+            for (let i = 0; i < 5; i++) {
+                const angle = -0.5 + i * 0.25;
+                const fx = 10 + Math.cos(angle) * 35;
+                const fy = 50 + Math.sin(angle) * 15;
+                ctx.fillStyle = flowerColors[i];
+                ctx.beginPath();
+                ctx.arc(fx, fy, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.arc(fx, fy, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Pony legs - cute round
+            const gallop = Math.sin(Date.now() / 150) * 5;
+            ctx.fillStyle = '#D4A574';
+            // Front legs
+            ctx.beginPath();
+            ctx.ellipse(-25, 85 + gallop, 8, 20, 0.1, 0, Math.PI * 2);
+            ctx.ellipse(-10, 85 - gallop, 8, 20, -0.1, 0, Math.PI * 2);
+            ctx.fill();
+            // Back legs
+            ctx.beginPath();
+            ctx.ellipse(15, 85 + gallop, 8, 20, 0.1, 0, Math.PI * 2);
+            ctx.ellipse(30, 85 - gallop, 8, 20, -0.1, 0, Math.PI * 2);
+            ctx.fill();
+            // Hooves
+            ctx.fillStyle = '#8B6914';
+            ctx.beginPath();
+            ctx.ellipse(-25, 102 + gallop, 6, 4, 0, 0, Math.PI * 2);
+            ctx.ellipse(-10, 102 - gallop, 6, 4, 0, 0, Math.PI * 2);
+            ctx.ellipse(15, 102 + gallop, 6, 4, 0, 0, Math.PI * 2);
+            ctx.ellipse(30, 102 - gallop, 6, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Pony tail - wavy
+            ctx.fillStyle = '#8B6914';
+            ctx.beginPath();
+            ctx.moveTo(-45, 55);
+            ctx.quadraticCurveTo(-60 + Math.sin(Date.now()/200)*5, 60, -55, 75);
+            ctx.quadraticCurveTo(-65 + Math.sin(Date.now()/200)*5, 85, -50, 95);
+            ctx.quadraticCurveTo(-40, 80, -45, 65);
+            ctx.fill();
+            
+            // === CHILD RIDER ===
+            // Child body - striped shirt
+            ctx.fillStyle = '#4A90D9'; // Blue overalls
+            ctx.beginPath();
+            ctx.ellipse(0, 25, 18, 22, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Striped shirt showing
+            ctx.fillStyle = '#E74C3C';
+            ctx.fillRect(-12, 5, 24, 6);
             ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(-55, 90, 110, 15);
+            ctx.fillRect(-12, 11, 24, 5);
+            ctx.fillStyle = '#E74C3C';
+            ctx.fillRect(-12, 16, 24, 5);
+            
+            // Child head
+            ctx.fillStyle = '#FFDAB9';
             ctx.beginPath();
-            ctx.arc(0, 200, 55, 0, Math.PI);
+            ctx.arc(0, -15, 18, 0, Math.PI * 2);
             ctx.fill();
             
-            // Belt
-            ctx.fillStyle = '#333';
-            ctx.fillRect(-50, 130, 100, 15);
+            // Helmet - gray with patches
+            ctx.fillStyle = '#708090';
+            ctx.beginPath();
+            ctx.arc(0, -22, 16, Math.PI, 2 * Math.PI);
+            ctx.fill();
+            ctx.fillRect(-16, -22, 32, 5);
+            // Helmet patches
             ctx.fillStyle = '#FFD700';
-            ctx.fillRect(-12, 127, 24, 21);
+            ctx.fillRect(-8, -30, 6, 6);
+            ctx.fillStyle = '#FF6B6B';
+            ctx.fillRect(3, -28, 5, 5);
             
-            // Arms
-            ctx.fillStyle = '#E53935';
+            // Child hair peeking out
+            ctx.fillStyle = '#8B4513';
             ctx.beginPath();
-            ctx.ellipse(-65, 120, 20, 35, -0.3, 0, Math.PI * 2);
-            ctx.ellipse(65, 120, 20, 35, 0.3, 0, Math.PI * 2);
+            ctx.arc(-12, -18, 5, 0, Math.PI * 2);
+            ctx.arc(12, -18, 5, 0, Math.PI * 2);
             ctx.fill();
             
-            // Hands (mittens)
-            ctx.fillStyle = '#4CAF50';
+            // Child happy closed eyes
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.arc(-70, 155, 18, 0, Math.PI * 2);
-            ctx.arc(70, 155, 18, 0, Math.PI * 2);
+            ctx.arc(-6, -15, 4, 0.3, Math.PI - 0.3);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(6, -15, 4, 0.3, Math.PI - 0.3);
+            ctx.stroke();
+            
+            // Child rosy cheeks
+            ctx.fillStyle = '#FFB6C1';
+            ctx.beginPath();
+            ctx.ellipse(-12, -8, 5, 3, 0, 0, Math.PI * 2);
+            ctx.ellipse(12, -8, 5, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Child big smile
+            ctx.fillStyle = '#FFF';
+            ctx.beginPath();
+            ctx.arc(0, -5, 8, 0.1, Math.PI - 0.1);
+            ctx.fill();
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(0, -5, 8, 0.1, Math.PI - 0.1);
+            ctx.stroke();
+            
+            // Child arms holding pony
+            ctx.fillStyle = '#FFDAB9';
+            ctx.beginPath();
+            ctx.ellipse(-20, 20, 6, 12, -0.8, 0, Math.PI * 2);
+            ctx.ellipse(20, 20, 6, 12, 0.8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Child legs
+            ctx.fillStyle = '#4A90D9';
+            ctx.beginPath();
+            ctx.ellipse(-12, 45, 7, 12, 0.2, 0, Math.PI * 2);
+            ctx.ellipse(12, 45, 7, 12, -0.2, 0, Math.PI * 2);
+            ctx.fill();
+            // Shoes
+            ctx.fillStyle = '#5D9CEC';
+            ctx.beginPath();
+            ctx.ellipse(-12, 56, 6, 4, 0, 0, Math.PI * 2);
+            ctx.ellipse(12, 56, 6, 4, 0, 0, Math.PI * 2);
             ctx.fill();
             
             ctx.restore();
+            
+            // Draw head collision indicator (top of head)
+            ctx.fillStyle = 'rgba(255, 215, 0, 0.5)';
+            ctx.beginPath();
+            ctx.arc(noseX, noseY - 30 * scale, 20, 0, Math.PI * 2);
+            ctx.fill();
         }
     };
 
     const detectPosition = (results) => {
         if (!results.poseLandmarks) return;
         
-        const leftHip = results.poseLandmarks[23];
-        const rightHip = results.poseLandmarks[24];
-        const centerX = 1 - ((leftHip.x + rightHip.x) / 2);
+        const canvas = canvasRef.current;
+        if (!canvas) return;
         
+        const landmarks = results.poseLandmarks.map(lm => ({ ...lm, x: 1 - lm.x }));
+        const nose = landmarks[0];
+        const noseX = nose.x * canvas.width;
+        const noseY = nose.y * canvas.height;
+        
+        // Determine which zone the user is in
         let position;
-        if (centerX < 0.35) position = 'left';
-        else if (centerX > 0.65) position = 'right';
+        if (noseX < canvas.width * 0.35) position = 'left';
+        else if (noseX > canvas.width * 0.65) position = 'right';
         else position = 'center';
-        
-        // Always update visual position
         setUserPosition(position);
-        setHighlightedPosition(position);
         
-        // Don't process selection if already processing or game complete (use refs for latest values)
+        // Don't process if already processing or game complete
         if (processingRef.current || isGameCompleteRef.current || gameWordsRef.current.length === 0) {
-            setHoldProgress(0);
             return;
         }
         
-        if (position === lastPositionRef.current && lastPositionRef.current !== '') {
-            if (!holdStartRef.current) holdStartRef.current = Date.now();
-            const elapsed = Date.now() - holdStartRef.current;
-            setHoldProgress(Math.min(elapsed / 3000 * 100, 100));
+        // Cooldown to prevent rapid re-triggering (500ms)
+        if (Date.now() - lastHitTimeRef.current < 500) return;
+        
+        // Check for head collision with bricks (Mario-style head bump)
+        // Head needs to be near the top of screen (near brick level)
+        const headTop = noseY - 50; // Approximate top of head
+        
+        BRICK_POSITIONS.forEach((brick, idx) => {
+            const brickLeft = brick.x - BRICK_WIDTH / 2;
+            const brickRight = brick.x + BRICK_WIDTH / 2;
+            const brickBottom = BRICK_Y + BRICK_HEIGHT / 2;
+            const brickTop = BRICK_Y - BRICK_HEIGHT / 2;
             
-            if (elapsed >= 3000 && !selectionTimeoutRef.current) {
-                selectionTimeoutRef.current = true;
-                handleSelection(position);
+            // Check if head is touching this brick from below
+            if (noseX >= brickLeft && noseX <= brickRight &&
+                headTop <= brickBottom && headTop >= brickTop - 30) {
+                // Head is touching this brick!
+                lastHitTimeRef.current = Date.now();
+                handleBrickHit(idx);
             }
-        } else {
-            lastPositionRef.current = position;
-            holdStartRef.current = Date.now();
-            selectionTimeoutRef.current = null;
-            setHoldProgress(0);
-        }
+        });
     };
 
-    const handleSelection = (position) => {
+    const handleBrickHit = (brickIndex) => {
         // Use refs for latest values to avoid stale closure
         if (isGameCompleteRef.current || gameWordsRef.current.length === 0 || processingRef.current) return;
         processingRef.current = true;
@@ -1001,10 +1245,13 @@ const GameScreen = ({ selectedWords, onBackToMenu }) => {
             return;
         }
         
-        const positionIndex = position === 'left' ? 0 : position === 'center' ? 1 : 2;
-        const selectedImage = images[positionIndex];
+        const selectedImage = images[brickIndex];
         
         if (selectedImage.correct) {
+            // Correct answer - brick hit animation
+            setHitBrick(brickIndex);
+            setTimeout(() => setHitBrick(null), 300);
+            
             const comboMultiplier = Math.min(combo + 1, 5);
             const earnedScore = 100 * comboMultiplier;
             
@@ -1012,16 +1259,13 @@ const GameScreen = ({ selectedWords, onBackToMenu }) => {
             setCombo(prev => prev + 1);
             setCorrectCount(prev => prev + 1);
             
-            const newScore = { id: Date.now(), score: earnedScore, x: '50%', y: '50%' };
+            const newScore = { id: Date.now(), score: earnedScore, x: '50%', y: '30%' };
             setFloatingScores(prev => [...prev, newScore]);
             setTimeout(() => setFloatingScores(prev => prev.filter(s => s.id !== newScore.id)), 1000);
             
             setShowConfetti(true);
-            // Play victory sound using Web Audio API
             playVictorySound();
-            setTimeout(() => {
-                setShowConfetti(false);
-            }, 3000);
+            setTimeout(() => setShowConfetti(false), 2000);
             
             generateAIMessage(earnedScore, combo + 1);
             
@@ -1032,7 +1276,6 @@ const GameScreen = ({ selectedWords, onBackToMenu }) => {
             if (currentIdx + 1 >= totalWords) {
                 // This is the last word - show victory!
                 console.log('Game Complete! currentIdx:', currentIdx, 'totalWords:', totalWords);
-                // Stop camera/pose detection immediately
                 shouldProcessRef.current = false;
                 if (cameraRef.current) {
                     cameraRef.current.stop();
@@ -1042,31 +1285,28 @@ const GameScreen = ({ selectedWords, onBackToMenu }) => {
                     poseRef.current.close();
                     poseRef.current = null;
                 }
-                setTimeout(() => {
-                    setIsGameComplete(true);
-                }, 3000);
+                setTimeout(() => setIsGameComplete(true), 2000);
             } else {
                 setTimeout(() => {
                     setCurrentWordIndex(prev => prev + 1);
                     processingRef.current = false;
-                    selectionTimeoutRef.current = null;
-                    holdStartRef.current = null;
-                    setHoldProgress(0);
-                }, 3000);
+                }, 2000);
             }
         } else {
+            // Wrong answer - shake animation and sound
+            setWrongBrick(brickIndex);
+            setTimeout(() => setWrongBrick(null), 500);
+            
             setCombo(0);
+            setWrongCount(prev => prev + 1);
+            playWrongSound();
             setAiMessage('再试一次哦！💪');
-            // Clear message after 2 seconds
             setTimeout(() => setAiMessage(''), 2000);
-            // Reset all refs to allow retry - key fix: also reset lastPositionRef
+            
+            // Allow retry after short delay
             setTimeout(() => {
                 processingRef.current = false;
-                selectionTimeoutRef.current = null;
-                holdStartRef.current = null;
-                lastPositionRef.current = ''; // Reset this so any position is treated as new
-                setHoldProgress(0);
-            }, 800);
+            }, 600);
         }
     };
 
@@ -1117,23 +1357,34 @@ const GameScreen = ({ selectedWords, onBackToMenu }) => {
     const currentWord = gameWords[currentWordIndex];
 
     if (isGameComplete) {
+        const accuracy = gameWords.length > 0 ? Math.round((correctCount / gameWords.length) * 100) : 0;
         return (
-            <div className="min-h-screen bg-gradient-to-br from-purple-500 via-pink-400 to-blue-500 flex items-center justify-center">
+            <div className="min-h-screen bg-gradient-to-br from-orange-400 via-yellow-300 to-green-400 flex items-center justify-center">
                 <VictoryConfetti active={true} />
                 <div className="text-center bg-white/90 backdrop-blur-lg rounded-3xl p-12 shadow-2xl z-10 relative">
-                    <div className="text-9xl mb-6 animate-trophy">👑</div>
+                    <div className="text-9xl mb-6 animate-trophy">🐴</div>
                     <h1 className="fancy-chinese animate-victory-glow mb-4" style={{ fontSize: '4rem', color: '#FFD700', textShadow: '0 0 30px #FFD700, 0 0 60px #FF6B9D, 0 0 90px #4ECDC4, 4px 4px 0 #FF9F43' }}>
-                        🎉 恭喜通关 🎉
+                        🎉 本轮结束 🎉
                     </h1>
                     <p className="text-2xl text-gray-600 mb-8 font-bold">你完成了所有单词！太厉害了！</p>
-                    <div className="grid grid-cols-2 gap-8 mb-8">
-                        <div className="bg-gradient-to-br from-candy-pink to-candy-orange p-6 rounded-2xl transform hover:scale-105 transition-all">
-                            <div className="text-5xl font-black text-white animate-pulse">{score}</div>
-                            <div className="text-white/90 text-lg font-bold">⭐ 总分数 ⭐</div>
+                    <div className="grid grid-cols-2 gap-6 mb-6">
+                        <div className="bg-gradient-to-br from-candy-pink to-candy-orange p-5 rounded-2xl transform hover:scale-105 transition-all">
+                            <div className="text-4xl font-black text-white animate-pulse">{score}</div>
+                            <div className="text-white/90 text-lg font-bold">⭐ 总分数</div>
                         </div>
-                        <div className="bg-gradient-to-br from-candy-blue to-candy-green p-6 rounded-2xl transform hover:scale-105 transition-all">
-                            <div className="text-5xl font-black text-white animate-pulse">{correctCount}/{gameWords.length}</div>
-                            <div className="text-white/90 text-lg font-bold">✅ 正确单词 ✅</div>
+                        <div className="bg-gradient-to-br from-candy-blue to-candy-green p-5 rounded-2xl transform hover:scale-105 transition-all">
+                            <div className="text-4xl font-black text-white animate-pulse">{accuracy}%</div>
+                            <div className="text-white/90 text-lg font-bold">📊 正确率</div>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-6 mb-8">
+                        <div className="bg-gradient-to-br from-green-400 to-green-600 p-5 rounded-2xl transform hover:scale-105 transition-all">
+                            <div className="text-4xl font-black text-white animate-pulse">{correctCount}</div>
+                            <div className="text-white/90 text-lg font-bold">✅ 正确</div>
+                        </div>
+                        <div className="bg-gradient-to-br from-red-400 to-red-600 p-5 rounded-2xl transform hover:scale-105 transition-all">
+                            <div className="text-4xl font-black text-white animate-pulse">{wrongCount}</div>
+                            <div className="text-white/90 text-lg font-bold">❌ 错误</div>
                         </div>
                     </div>
                     <button onClick={onBackToMenu} className="cute-button px-12 py-5 text-white font-black text-2xl hover:scale-110 transition-all">🏠 返回主页</button>
@@ -1143,8 +1394,8 @@ const GameScreen = ({ selectedWords, onBackToMenu }) => {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 relative overflow-hidden">
-            <ChristmasMusicPlayer play={playMusic} />
+        <div className="min-h-screen bg-gradient-to-br from-blue-400 via-green-300 to-yellow-200 relative overflow-hidden">
+            <HorseMusicPlayer play={playMusic} />
             <video ref={videoRef} className="hidden" playsInline />
             <audio ref={audioRef} />
             <canvas ref={canvasRef} className="absolute inset-0 w-full h-full object-cover" />
@@ -1154,18 +1405,22 @@ const GameScreen = ({ selectedWords, onBackToMenu }) => {
             
             {/* Score Panel */}
             <div className="absolute top-4 left-4 z-20">
-                <div className="bg-white/90 backdrop-blur-lg rounded-3xl p-6 shadow-xl">
-                    <div className="flex items-center gap-4 mb-4">
-                        <span className="text-4xl">⭐</span>
-                        <div><div className="text-3xl font-black text-gray-800">{score}</div><div className="text-sm text-gray-500">分数</div></div>
+                <div className="bg-white/90 backdrop-blur-lg rounded-3xl p-4 shadow-xl">
+                    <div className="flex items-center gap-3 mb-3">
+                        <span className="text-3xl">⭐</span>
+                        <div><div className="text-2xl font-black text-gray-800">{score}</div><div className="text-xs text-gray-500">分数</div></div>
                     </div>
-                    <div className="flex items-center gap-4 mb-4">
-                        <span className="text-4xl">🔥</span>
-                        <div><div className="text-2xl font-bold text-candy-orange">{combo}x</div><div className="text-sm text-gray-500">连击</div></div>
+                    <div className="flex items-center gap-3 mb-3">
+                        <span className="text-3xl">🔥</span>
+                        <div><div className="text-xl font-bold text-candy-orange">{combo}x</div><div className="text-xs text-gray-500">连击</div></div>
                     </div>
-                    <div className="flex items-center gap-4">
-                        <span className="text-4xl">✅</span>
-                        <div><div className="text-2xl font-bold text-candy-green">{correctCount}/{gameWords.length}</div><div className="text-sm text-gray-500">正确</div></div>
+                    <div className="flex items-center gap-3 mb-3">
+                        <span className="text-3xl">✅</span>
+                        <div><div className="text-xl font-bold text-candy-green">{correctCount}</div><div className="text-xs text-gray-500">正确</div></div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <span className="text-3xl">❌</span>
+                        <div><div className="text-xl font-bold text-red-500">{wrongCount}</div><div className="text-xs text-gray-500">错误</div></div>
                     </div>
                 </div>
             </div>
@@ -1177,6 +1432,9 @@ const GameScreen = ({ selectedWords, onBackToMenu }) => {
                         <label className="cute-button px-4 py-2 text-white font-bold text-sm cursor-pointer text-center">
                             🎵 上传音乐<input type="file" accept="audio/*" onChange={handleMusicUpload} className="hidden" />
                         </label>
+                        <button onClick={() => setPlayMusic(!playMusic)} className="bg-gradient-to-r from-candy-green to-candy-blue px-4 py-2 text-white font-bold text-sm rounded-full">
+                            {playMusic ? '🔇 关闭音乐' : '🔊 开启音乐'}
+                        </button>
                         <button onClick={() => setShowSettings(!showSettings)} className="bg-gradient-to-r from-candy-purple to-candy-blue px-4 py-2 text-white font-bold text-sm rounded-full">⚙️ AI 设置</button>
                         <button onClick={onBackToMenu} className="bg-gradient-to-r from-gray-400 to-gray-500 px-4 py-2 text-white font-bold text-sm rounded-full">🏠 返回</button>
                     </div>
@@ -1189,64 +1447,64 @@ const GameScreen = ({ selectedWords, onBackToMenu }) => {
                 )}
             </div>
             
-            {/* Word Display - English only, no Chinese */}
-            {currentWord && (
-                <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-20">
-                    <div className="word-bubble px-12 py-8 text-center animate-float">
-                        <div className="text-6xl font-black text-gray-800">{currentWord.word}</div>
-                    </div>
-                </div>
-            )}
-            
-            {/* AI Message */}
-            {aiMessage && (
-                <div className="absolute top-40 left-1/2 transform -translate-x-1/2 z-20">
-                    <div className="bg-white/90 backdrop-blur-lg rounded-full px-8 py-3 shadow-lg animate-bounce">
-                        <span className="text-xl font-bold text-candy-purple">{aiMessage}</span>
-                    </div>
-                </div>
-            )}
-            
-            {/* Image Options */}
+            {/* Brick Image Labels - show what each brick represents */}
             {currentImages.length > 0 && (
-                <div className="absolute bottom-32 left-0 right-0 flex justify-around px-8 z-20">
+                <div className="absolute top-48 left-0 right-0 flex justify-around px-16 z-20">
                     {currentImages.map((img, index) => {
-                        const position = index === 0 ? 'left' : index === 1 ? 'center' : 'right';
-                        const isHighlighted = highlightedPosition === position;
+                        const isHit = hitBrick === index;
+                        const isWrong = wrongBrick === index;
                         return (
-                            <div key={`${currentWordIndex}-${index}`} className={`image-card bg-white rounded-3xl p-3 shadow-2xl ${isHighlighted ? 'selected ring-4 ring-candy-yellow' : ''}`} style={{ width: '250px' }}>
-                                <img src={img.url} alt={img.label} className="w-full h-48 object-cover rounded-2xl" onError={(e) => { e.target.src = `https://via.placeholder.com/300?text=${img.label}`; }} />
-                                {isHighlighted && (
-                                    <div className="mt-3">
-                                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                                            <div className="h-full bg-candy-green transition-all" style={{ width: `${holdProgress}%` }} />
-                                        </div>
-                                        <div className="text-center text-xs text-gray-500 mt-1">保持位置选择</div>
-                                    </div>
-                                )}
+                            <div key={`brick-label-${currentWordIndex}-${index}`} 
+                                 className={`bg-white/95 rounded-2xl p-4 shadow-2xl transition-all duration-200 ${isHit ? 'animate-brick-hit scale-110' : ''} ${isWrong ? 'animate-wrong-shake bg-red-100' : ''}`} 
+                                 style={{ width: '180px' }}>
+                                <img src={img.url} alt={img.label} className="w-full h-32 object-contain rounded-xl" 
+                                     onError={(e) => { e.target.src = `https://via.placeholder.com/150?text=${img.label}`; }} />
                             </div>
                         );
                     })}
                 </div>
             )}
             
-            {/* Position Indicator */}
-            <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20">
-                <div className="bg-white/80 backdrop-blur-lg rounded-full px-8 py-3 shadow-lg">
-                    <div className="flex items-center gap-4">
-                        <div className={`w-4 h-4 rounded-full transition-all ${userPosition === 'left' ? 'bg-candy-green scale-150' : 'bg-gray-300'}`} />
-                        <span className="text-gray-600 font-bold">左</span>
-                        <div className={`w-4 h-4 rounded-full transition-all ${userPosition === 'center' ? 'bg-candy-green scale-150' : 'bg-gray-300'}`} />
-                        <span className="text-gray-600 font-bold">中</span>
-                        <div className={`w-4 h-4 rounded-full transition-all ${userPosition === 'right' ? 'bg-candy-green scale-150' : 'bg-gray-300'}`} />
-                        <span className="text-gray-600 font-bold">右</span>
+            {/* Word Display - at bottom center */}
+            {currentWord && (
+                <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 z-20">
+                    <div className="word-bubble px-10 py-6 text-center animate-float">
+                        <div className="text-5xl font-black text-gray-800">🎯 {currentWord.word}</div>
+                        <div className="text-lg text-gray-600 mt-2">用头顶触碰正确的砖块!</div>
                     </div>
+                </div>
+            )}
+            
+            {/* AI Message */}
+            {aiMessage && (
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30">
+                    <div className="bg-white/95 backdrop-blur-lg rounded-3xl px-10 py-6 shadow-2xl animate-bounce">
+                        <span className="text-3xl font-black text-candy-purple">{aiMessage}</span>
+                    </div>
+                </div>
+            )}
+            
+            {/* Instructions */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20">
+                <div className="bg-white/80 backdrop-blur-lg rounded-full px-6 py-2 shadow-lg">
+                    <div className="flex items-center gap-3 text-sm">
+                        <span className="text-2xl">🐴</span>
+                        <span className="text-gray-600 font-bold">跳起来用头顶砖块选择答案！</span>
+                        <span className="text-2xl">🧱</span>
+                    </div>
+                </div>
+            </div>
+            
+            {/* Progress indicator */}
+            <div className="absolute bottom-4 right-4 z-20">
+                <div className="bg-white/80 backdrop-blur-lg rounded-full px-4 py-2 shadow-lg">
+                    <span className="text-gray-700 font-bold">{currentWordIndex + 1} / {gameWords.length}</span>
                 </div>
             </div>
             
             {/* Audio Visualizer */}
             {isPlaying && audioData.length > 0 && (
-                <div className="absolute bottom-0 left-0 right-0 h-16 flex items-end justify-center gap-1 z-10 opacity-50">
+                <div className="absolute bottom-0 left-0 right-0 h-12 flex items-end justify-center gap-1 z-10 opacity-40">
                     {audioData.slice(0, 32).map((v, i) => (
                         <div key={i} className="w-2 bg-gradient-to-t from-candy-pink to-candy-yellow rounded-t" style={{ height: `${v / 4}px` }} />
                     ))}
@@ -1260,15 +1518,15 @@ const GameScreen = ({ selectedWords, onBackToMenu }) => {
 const CameraPermissionScreen = ({ onAllow, onDeny }) => {
     return (
         <div className="fixed inset-0 flex items-center justify-center z-50" style={{
-            backgroundImage: 'url(https://images.unsplash.com/photo-1482517967863-00e15c9b44be?w=1920&q=80)',
+            backgroundImage: 'url(https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?w=1920&q=80)',
             backgroundSize: 'cover',
             backgroundPosition: 'center'
         }}>
-            <div className="absolute inset-0 bg-black/60" />
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-900/60 via-yellow-700/50 to-green-600/60" />
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 {[...Array(15)].map((_, i) => (
                     <div key={i} className="absolute animate-float text-3xl" style={{ left: `${Math.random()*100}%`, top: `${Math.random()*100}%`, animationDelay: `${Math.random()*3}s`, opacity: 0.7 }}>
-                        {['❄️','🎄','⭐','🎁','🔔'][i%5]}
+                        {['🐴','🏇','⭐','🌾','🎠'][i%5]}
                     </div>
                 ))}
             </div>
@@ -1279,7 +1537,7 @@ const CameraPermissionScreen = ({ onAllow, onDeny }) => {
                     游戏需要使用摄像头来识别你的动作
                 </p>
                 <p className="text-lg text-gray-500 mb-8">
-                    请允许访问摄像头以继续游戏 🎮
+                    请允许访问摄像头以继续游戏 🐴
                 </p>
                 <div className="flex gap-4 justify-center">
                     <button 
@@ -1310,28 +1568,31 @@ const WelcomeScreen = ({ onStart }) => {
     
     return (
         <div onClick={handleClick} className="fixed inset-0 cursor-pointer flex flex-col items-center justify-center z-50" style={{
-            backgroundImage: 'url(https://images.unsplash.com/photo-1482517967863-00e15c9b44be?w=1920&q=80)',
+            backgroundImage: 'url(https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?w=1920&q=80)',
             backgroundSize: 'cover',
             backgroundPosition: 'center'
         }}>
-            <div className="absolute inset-0 bg-black/50" />
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-900/50 via-yellow-600/40 to-green-700/50" />
             <div className="text-center z-10">
-                <div className="text-9xl mb-8 animate-bounce">🎄</div>
+                <div className="text-9xl mb-8 animate-bounce">🐴</div>
                 <h1 className="text-6xl font-black text-white mb-6" style={{ textShadow: '3px 3px 10px rgba(0,0,0,0.8)' }}>
-                    🎅 单词小勇士 🎅
+                    🏇 单词小勇士 🏇
                 </h1>
-                <p className="text-3xl text-white mb-8" style={{ textShadow: '2px 2px 6px rgba(0,0,0,0.8)' }}>
-                    Christmas Word Hero
+                <p className="text-3xl text-white mb-4" style={{ textShadow: '2px 2px 6px rgba(0,0,0,0.8)' }}>
+                    Horse Year Word Hero
+                </p>
+                <p className="text-xl text-yellow-200 mb-8" style={{ textShadow: '1px 1px 4px rgba(0,0,0,0.8)' }}>
+                    🧱 用头顶砖块学单词 - 马里奥风格互动 🧱
                 </p>
                 <div className="bg-white/90 backdrop-blur-lg rounded-full px-12 py-6 shadow-2xl animate-pulse">
                     <span className="text-3xl font-black text-candy-pink">👆 点击屏幕开始 👆</span>
                 </div>
                 <p className="text-xl text-white/80 mt-6" style={{ textShadow: '1px 1px 4px rgba(0,0,0,0.8)' }}>
-                    🔊 点击后将播放圣诞音乐
+                    🔊 点击后将播放马年主题音乐
                 </p>
             </div>
             <div className="absolute bottom-10 flex gap-8">
-                {['🎅','🦌','⛄','🎁','❄️','🎄'].map((e, i) => (
+                {['🐴','🏇','🎠','⭐','🌾','🐎'].map((e, i) => (
                     <span key={i} className="text-6xl animate-bounce" style={{ animationDelay: `${i*0.15}s` }}>{e}</span>
                 ))}
             </div>
