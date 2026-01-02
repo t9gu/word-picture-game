@@ -707,15 +707,10 @@ const GameScreen = ({ selectedWords, onBackToMenu }) => {
     const [playMusic, setPlayMusic] = useState(true);
     const particlesRef = useRef([]);
     
-    // Brick positions (top of screen, Mario-style)
-    const BRICK_Y = 120;
-    const BRICK_WIDTH = 200;
-    const BRICK_HEIGHT = 100;
-    const BRICK_POSITIONS = [
-        { x: 160, label: 'left' },
-        { x: 640, label: 'center' },
-        { x: 1120, label: 'right' }
-    ];
+    // Brick positions will be calculated dynamically based on canvas size
+    const BRICK_Y_RATIO = 0.18;  // 18% from top
+    const BRICK_WIDTH_RATIO = 0.15;  // 15% of canvas width
+    const BRICK_HEIGHT_RATIO = 0.14; // 14% of canvas height
     
     // Initialize floating particles (grass, flowers for horse theme)
     useEffect(() => {
@@ -761,30 +756,58 @@ const GameScreen = ({ selectedWords, onBackToMenu }) => {
         isGameCompleteRef.current = isGameComplete;
     }, [isGameComplete]);
 
+    const [isLoading, setIsLoading] = useState(true);
+    const [loadingMessage, setLoadingMessage] = useState('正在加载摄像头...');
+    
     useEffect(() => {
         if (!videoRef.current || !canvasRef.current || gameWords.length === 0) return;
         
         shouldProcessRef.current = true;
+        setIsLoading(true);
+        setLoadingMessage('正在加载 AI 模型...');
         
+        // Use lite model (modelComplexity: 0) for fastest detection
         const pose = new Pose({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}` });
-        pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+        pose.setOptions({ 
+            modelComplexity: 0,  // 0=lite (fastest), 1=full, 2=heavy
+            smoothLandmarks: true, 
+            enableSegmentation: false,  // Disable segmentation for speed
+            smoothSegmentation: false,
+            minDetectionConfidence: 0.3,  // Lower threshold for faster initial detection
+            minTrackingConfidence: 0.3 
+        });
         poseRef.current = pose;
         
+        let firstDetection = true;
         pose.onResults((results) => {
             if (!shouldProcessRef.current) return;
+            if (firstDetection && results.poseLandmarks) {
+                firstDetection = false;
+                setIsLoading(false);
+            }
             drawSkeleton(results);
             detectPosition(results);
         });
         
+        setLoadingMessage('正在启动摄像头...');
+        
+        // Use lower resolution for faster processing
         const camera = new Camera(videoRef.current, {
             onFrame: async () => { 
                 if (!shouldProcessRef.current) return;
                 await pose.send({ image: videoRef.current }); 
             },
-            width: 1280, height: 720
+            width: 640,   // Reduced from 1280 for faster processing
+            height: 480   // Reduced from 720
         });
         cameraRef.current = camera;
-        camera.start();
+        
+        camera.start().then(() => {
+            setLoadingMessage('正在识别人体，请站到镜头前...');
+        }).catch(err => {
+            console.error('Camera start error:', err);
+            setLoadingMessage('摄像头启动失败，请刷新重试');
+        });
         
         return () => { 
             shouldProcessRef.current = false;
@@ -895,43 +918,51 @@ const GameScreen = ({ selectedWords, onBackToMenu }) => {
             ctx.fill();
         });
         
-        // Draw Mario-style bricks at top
+        // Draw Mario-style bricks at top - positions calculated dynamically
         const images = currentImagesRef.current;
-        BRICK_POSITIONS.forEach((brick, idx) => {
+        const BRICK_WIDTH = canvas.width * BRICK_WIDTH_RATIO;
+        const BRICK_HEIGHT = canvas.height * BRICK_HEIGHT_RATIO;
+        const BRICK_Y = canvas.height * BRICK_Y_RATIO;
+        const brickPositions = [
+            { x: canvas.width * 0.17, label: 'left' },
+            { x: canvas.width * 0.5, label: 'center' },
+            { x: canvas.width * 0.83, label: 'right' }
+        ];
+        
+        brickPositions.forEach((brick, idx) => {
             const isHit = hitBrick === idx;
             const isWrong = wrongBrick === idx;
-            const brickY = BRICK_Y + (isHit ? -15 : 0);
+            const brickYPos = BRICK_Y + (isHit ? -10 : 0);
             
             // Brick shadow
             ctx.fillStyle = 'rgba(0,0,0,0.2)';
-            ctx.fillRect(brick.x - BRICK_WIDTH/2 + 5, brickY - BRICK_HEIGHT/2 + 5, BRICK_WIDTH, BRICK_HEIGHT);
+            ctx.fillRect(brick.x - BRICK_WIDTH/2 + 3, brickYPos - BRICK_HEIGHT/2 + 3, BRICK_WIDTH, BRICK_HEIGHT);
             
             // Main brick - golden/brown Mario style
-            const brickGrad = ctx.createLinearGradient(brick.x - BRICK_WIDTH/2, brickY - BRICK_HEIGHT/2, brick.x - BRICK_WIDTH/2, brickY + BRICK_HEIGHT/2);
+            const brickGrad = ctx.createLinearGradient(brick.x - BRICK_WIDTH/2, brickYPos - BRICK_HEIGHT/2, brick.x - BRICK_WIDTH/2, brickYPos + BRICK_HEIGHT/2);
             brickGrad.addColorStop(0, isWrong ? '#FF6B6B' : '#FFD54F');
             brickGrad.addColorStop(0.5, isWrong ? '#E53935' : '#FFB300');
             brickGrad.addColorStop(1, isWrong ? '#C62828' : '#FF8F00');
             ctx.fillStyle = brickGrad;
-            ctx.fillRect(brick.x - BRICK_WIDTH/2, brickY - BRICK_HEIGHT/2, BRICK_WIDTH, BRICK_HEIGHT);
+            ctx.fillRect(brick.x - BRICK_WIDTH/2, brickYPos - BRICK_HEIGHT/2, BRICK_WIDTH, BRICK_HEIGHT);
             
             // Brick border
             ctx.strokeStyle = '#5D4037';
-            ctx.lineWidth = 4;
-            ctx.strokeRect(brick.x - BRICK_WIDTH/2, brickY - BRICK_HEIGHT/2, BRICK_WIDTH, BRICK_HEIGHT);
+            ctx.lineWidth = 3;
+            ctx.strokeRect(brick.x - BRICK_WIDTH/2, brickYPos - BRICK_HEIGHT/2, BRICK_WIDTH, BRICK_HEIGHT);
             
-            // Question mark or image on brick
+            // Question mark on brick
             if (images && images[idx]) {
-                // Draw image placeholder text
                 ctx.fillStyle = '#FFF';
-                ctx.font = 'bold 40px Nunito';
+                ctx.font = `bold ${Math.floor(BRICK_HEIGHT * 0.5)}px Nunito`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText('?', brick.x, brickY);
+                ctx.fillText('?', brick.x, brickYPos);
             }
             
             // Shine effect
             ctx.fillStyle = 'rgba(255,255,255,0.3)';
-            ctx.fillRect(brick.x - BRICK_WIDTH/2 + 5, brickY - BRICK_HEIGHT/2 + 5, BRICK_WIDTH - 10, 15);
+            ctx.fillRect(brick.x - BRICK_WIDTH/2 + 3, brickYPos - BRICK_HEIGHT/2 + 3, BRICK_WIDTH - 6, 10);
         });
         
         if (results.poseLandmarks) {
@@ -1214,11 +1245,20 @@ const GameScreen = ({ selectedWords, onBackToMenu }) => {
         // Cooldown to prevent rapid re-triggering (500ms)
         if (Date.now() - lastHitTimeRef.current < 500) return;
         
-        // Check for head collision with bricks (Mario-style head bump)
-        // Head needs to be near the top of screen (near brick level)
-        const headTop = noseY - 50; // Approximate top of head
+        // Calculate dynamic brick positions based on canvas size
+        const BRICK_WIDTH = canvas.width * BRICK_WIDTH_RATIO;
+        const BRICK_HEIGHT = canvas.height * BRICK_HEIGHT_RATIO;
+        const BRICK_Y = canvas.height * BRICK_Y_RATIO;
+        const brickPositions = [
+            { x: canvas.width * 0.17, label: 'left' },
+            { x: canvas.width * 0.5, label: 'center' },
+            { x: canvas.width * 0.83, label: 'right' }
+        ];
         
-        BRICK_POSITIONS.forEach((brick, idx) => {
+        // Check for head collision with bricks (Mario-style head bump)
+        const headTop = noseY - 30; // Approximate top of head
+        
+        brickPositions.forEach((brick, idx) => {
             const brickLeft = brick.x - BRICK_WIDTH / 2;
             const brickRight = brick.x + BRICK_WIDTH / 2;
             const brickBottom = BRICK_Y + BRICK_HEIGHT / 2;
@@ -1226,7 +1266,7 @@ const GameScreen = ({ selectedWords, onBackToMenu }) => {
             
             // Check if head is touching this brick from below
             if (noseX >= brickLeft && noseX <= brickRight &&
-                headTop <= brickBottom && headTop >= brickTop - 30) {
+                headTop <= brickBottom && headTop >= brickTop - 20) {
                 // Head is touching this brick!
                 lastHitTimeRef.current = Date.now();
                 handleBrickHit(idx);
@@ -1399,6 +1439,22 @@ const GameScreen = ({ selectedWords, onBackToMenu }) => {
             <video ref={videoRef} className="hidden" playsInline />
             <audio ref={audioRef} />
             <canvas ref={canvasRef} className="absolute inset-0 w-full h-full object-cover" />
+            
+            {/* Loading Overlay */}
+            {isLoading && (
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/90 via-green-400/90 to-yellow-300/90 flex flex-col items-center justify-center z-50">
+                    <div className="text-8xl mb-8 animate-bounce">🐴</div>
+                    <div className="bg-white/95 rounded-3xl px-12 py-8 shadow-2xl text-center">
+                        <div className="flex items-center justify-center gap-3 mb-4">
+                            <div className="w-4 h-4 bg-candy-pink rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+                            <div className="w-4 h-4 bg-candy-orange rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                            <div className="w-4 h-4 bg-candy-yellow rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        </div>
+                        <p className="text-2xl font-black text-gray-800 mb-2">{loadingMessage}</p>
+                        <p className="text-gray-500">首次加载需要几秒钟，请稍候...</p>
+                    </div>
+                </div>
+            )}
             
             <Confetti active={showConfetti} />
             {floatingScores.map(fs => <FloatingScore key={fs.id} score={fs.score} x={fs.x} y={fs.y} />)}
